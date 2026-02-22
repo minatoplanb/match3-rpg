@@ -1,0 +1,19 @@
+{
+  "name": "match3-rpg",
+  "version": "0.1.0",
+  "description": "Match-3 RPG Roguelike (Puzzle Quest style)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "simulate": "node src/simulation/run.js"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1",
+    "phaser3-rex-plugins": "^1.80.14"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
