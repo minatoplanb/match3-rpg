@@ -1229,6 +1229,10 @@ export class CombatScene extends Phaser.Scene {
 
     const w = this.scale.width;
 
+    // Between-room heal
+    const healAmt = Math.round(this.hero.maxHp * FORMULAS.BETWEEN_ROOM_HEAL);
+    this.hero.currentHp = Math.min(this.hero.maxHp, this.hero.currentHp + healAmt);
+
     // Gold reward
     const goldReward = this.encounterType === 'elite'
       ? Phaser.Math.Between(ECONOMY.goldPerElite.min, ECONOMY.goldPerElite.max)
