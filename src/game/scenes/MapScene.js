@@ -356,76 +356,26 @@ export class MapScene extends Phaser.Scene {
   }
 
   executeNode(node) {
+    const passData = { ...this.runState, hero: this.hero };
     switch (node.type) {
       case 'combat':
-        this.scene.start('Combat', { ...this.runState, hero: this.hero, encounterType: 'combat' });
+        this.scene.start('Combat', { ...passData, encounterType: 'combat' });
         break;
       case 'elite':
-        this.scene.start('Combat', { ...this.runState, hero: this.hero, encounterType: 'elite' });
+        this.scene.start('Combat', { ...passData, encounterType: 'elite' });
         break;
       case 'shop':
-        this.showShop();
+        this.scene.start('Shop', passData);
         break;
       case 'rest':
-        this.doRest();
+        this.scene.start('Rest', passData);
         break;
       case 'mystery':
-        this.doMystery();
+        this.scene.start('Mystery', passData);
         break;
       case 'treasure':
-        this.scene.start('Reward', { ...this.runState, hero: this.hero });
+        this.scene.start('Reward', passData);
         break;
     }
-  }
-
-  showShop() {
-    const h = this.hero;
-    const g = this.runState.gold;
-
-    if (g >= ECONOMY.shopPrices.largePotion) {
-      this.runState.gold -= ECONOMY.shopPrices.largePotion;
-      const heal = Math.round(h.maxHp * ECONOMY.largePotionHeal);
-      h.currentHp = Math.min(h.maxHp, h.currentHp + heal);
-      this.runState.potions++;
-    } else if (g >= ECONOMY.shopPrices.smallPotion) {
-      this.runState.gold -= ECONOMY.shopPrices.smallPotion;
-      this.runState.potions++;
-    }
-
-    this.advanceFloor();
-  }
-
-  doRest() {
-    const h = this.hero;
-    const heal = Math.round(h.maxHp * ECONOMY.restNodeHeal);
-    h.currentHp = Math.min(h.maxHp, h.currentHp + heal);
-    this.runState.hadRestOrShop = true;
-    this.advanceFloor();
-  }
-
-  doMystery() {
-    const roll = Math.random();
-    const h = this.hero;
-
-    if (roll < 0.3) {
-      h.currentHp = Math.min(h.maxHp, h.currentHp + Math.round(h.maxHp * 0.3));
-    } else if (roll < 0.5) {
-      this.runState.gold += 30;
-    } else if (roll < 0.7) {
-      h.currentHp = Math.max(1, h.currentHp - Math.round(h.maxHp * 0.15));
-    } else {
-      this.runState.potions++;
-    }
-
-    this.advanceFloor();
-  }
-
-  advanceFloor() {
-    this.runState.floor++;
-    this.scene.start('Map', {
-      ...this.runState,
-      hero: this.hero,
-      floor: this.runState.floor,
-    });
   }
 }

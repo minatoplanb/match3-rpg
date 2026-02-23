@@ -230,7 +230,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Version
-    this.add.text(width / 2, height - 15, 'v0.2.0', {
+    this.add.text(width / 2, height - 15, 'v0.3.0', {
       fontSize: '10px', fontFamily: 'monospace', color: '#2d2d4a',
     }).setOrigin(0.5);
 

@@ -9,7 +9,7 @@
  *   [1160-1200] Skill button / bottom margin
  */
 import {
-  GEM_LIST, GEM_COUNT, BOARD, FORMULAS,
+  GEM_LIST, GEM_COUNT, GEM_TYPES, BOARD, FORMULAS,
   HEROES, ENEMIES, BOSSES, ENEMY_SCALING, FLOOR_ENCOUNTERS, ECONOMY
 } from '../../config/balance.js';
 import { resolveMatches } from '../systems/MatchResolver.js';
@@ -57,6 +57,9 @@ export class CombatScene extends Phaser.Scene {
     // Draw hero status area
     this.drawHeroStatus(width);
 
+    // Draw gem legend
+    this.drawGemLegend(width);
+
     // Create the match-3 board
     this.createBoard();
 
@@ -75,10 +78,15 @@ export class CombatScene extends Phaser.Scene {
     this.input.on('pointerup', (pointer) => this.onPointerUp(pointer));
     this.input.on('pointermove', (pointer) => this.onPointerMove(pointer));
 
-    // Fade in, then enable input
+    // Fade in, then enable input (or show tutorial first)
     this.cameras.main.fadeIn(300);
     this.time.delayedCall(400, () => {
-      this.inputEnabled = true;
+      if (this.floor === 1 && !this.runState._tutorialShown) {
+        this.showTutorial();
+      } else {
+        this.inputEnabled = true;
+        this.showTurnBanner('YOUR TURN', '#2ecc71');
+      }
     });
   }
 
@@ -290,6 +298,14 @@ export class CombatScene extends Phaser.Scene {
 
     this.enemyBarX = barX + 3;
     this.enemyBarMaxW = barW - 6;
+
+    // Enemy intent — shows what enemy will do next turn
+    const intentY = barY + barH + 8;
+    this.enemyIntentText = this.add.text(w / 2, intentY, '', {
+      fontSize: '12px', fontFamily: 'monospace', color: '#ff6b6b',
+      stroke: '#000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(20);
+    this.updateEnemyIntent();
   }
 
   getEnemyTextureKey() {
@@ -320,6 +336,48 @@ export class CombatScene extends Phaser.Scene {
     else this.enemyBarFill.setFillStyle(0xe74c3c);
   }
 
+  updateEnemyIntent() {
+    if (!this.enemyIntentText || !this.enemy) return;
+    const e = this.enemy;
+    let intent = `⚔ Next: ~${e.atk} DMG`;
+    if (e.isBoss) {
+      if (e.mechanic === 'enrage' && !e.enraged && e.currentHp <= e.maxHp * e.enrageThreshold) {
+        intent = '💢 ENRAGING!';
+      } else if (e.mechanic === 'column_block') {
+        const turnsLeft = (e.blockInterval || 3) - (e.turnsSinceBlock || 0);
+        if (turnsLeft <= 1) intent += ' + 🚫 Column block!';
+      } else if (e.mechanic === 'burn_gems') {
+        intent += ' + 🔥 Burns gems!';
+      } else if (e.mechanic === 'lifesteal') {
+        intent += ' + ☠ Poison';
+      }
+    }
+    this.enemyIntentText.setText(intent);
+  }
+
+  // ── TURN INDICATOR ─────────────────────────────────────────
+
+  showTurnBanner(text, color) {
+    const w = this.scale.width;
+    if (this.turnBanner) this.turnBanner.destroy();
+    this.turnBanner = this.add.text(w / 2, BOARD.originY - 38, text, {
+      fontSize: '14px', fontFamily: 'monospace', color,
+      stroke: '#000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(50).setAlpha(0);
+
+    this.tweens.add({
+      targets: this.turnBanner,
+      alpha: 1, duration: 150,
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.turnBanner,
+          alpha: 0, duration: 400, delay: 600,
+          onComplete: () => { if (this.turnBanner) this.turnBanner.destroy(); },
+        });
+      },
+    });
+  }
+
   // ── HUD ──────────────────────────────────────────────────────
 
   drawHUD(w) {
@@ -344,6 +402,36 @@ export class CombatScene extends Phaser.Scene {
     // Potion button (tap potions text to use)
     this.potionText.setInteractive({ useHandCursor: true });
     this.potionText.on('pointerdown', () => this.usePotion());
+  }
+
+  // ── GEM LEGEND ─────────────────────────────────────────────
+
+  drawGemLegend(w) {
+    const legendY = BOARD.originY - 18;
+    const gems = [
+      { symbol: '⚔', label: 'ATK', color: GEM_TYPES.sword.hex },
+      { symbol: '🔥', label: 'MATK', color: GEM_TYPES.fire.hex },
+      { symbol: '🛡', label: 'DEF', color: GEM_TYPES.shield.hex },
+      { symbol: '💚', label: 'HEAL', color: GEM_TYPES.heart.hex },
+      { symbol: '💰', label: 'GOLD', color: GEM_TYPES.coin.hex },
+      { symbol: '⭐', label: 'SKILL', color: GEM_TYPES.star.hex },
+    ];
+
+    const totalW = BOARD.cols * BOARD.cellSize;
+    const spacing = totalW / gems.length;
+    const startX = BOARD.originX + spacing / 2;
+
+    gems.forEach((gem, i) => {
+      const x = startX + i * spacing;
+      // Gem color dot
+      this.add.circle(x - 16, legendY, 5, Phaser.Display.Color.HexStringToColor(gem.color).color, 0.9)
+        .setDepth(20);
+      // Label
+      this.add.text(x - 8, legendY, gem.label, {
+        fontSize: '10px', fontFamily: 'monospace', color: gem.color,
+        stroke: '#000', strokeThickness: 1,
+      }).setOrigin(0, 0.5).setDepth(20);
+    });
   }
 
   // ── HERO STATUS ──────────────────────────────────────────────
@@ -1003,12 +1091,15 @@ export class CombatScene extends Phaser.Scene {
   applyMatchEffects(effects) {
     const h = this.hero;
     const e = this.enemy;
+    const w = this.scale.width;
+    let totalDamage = 0;
 
     // Physical damage
     if (effects.physicalDamage > 0) {
       const reduced = this.applyDefense(effects.physicalDamage, e.def);
       e.currentHp -= reduced;
-      this.showFloatingText(this.scale.width / 2, 130, `-${Math.round(reduced)}`, '#e74c3c');
+      totalDamage += reduced;
+      this.showFloatingText(w / 2 - 30, 130, `⚔ -${Math.round(reduced)}`, '#e74c3c');
       this.flashEnemy();
       playDamage();
     }
@@ -1017,38 +1108,47 @@ export class CombatScene extends Phaser.Scene {
     if (effects.magicDamage > 0) {
       const reduced = this.applyDefense(effects.magicDamage, e.def);
       e.currentHp -= reduced;
-      this.showFloatingText(this.scale.width / 2 + 40, 130, `-${Math.round(reduced)}`, '#e67e22');
+      totalDamage += reduced;
+      this.showFloatingText(w / 2 + 30, 130, `🔥 -${Math.round(reduced)}`, '#e67e22');
       this.flashEnemy();
       playDamage();
+    }
+
+    // Big hit screen flash
+    if (totalDamage > e.maxHp * 0.15) {
+      this.cameras.main.flash(100, 255, 50, 50, true);
     }
 
     // Heal
     if (effects.heal > 0) {
       h.currentHp = Math.min(h.maxHp, h.currentHp + effects.heal);
-      this.showFloatingText(this.scale.width / 2, 220, `+${Math.round(effects.heal)}`, '#2ecc71');
+      this.showFloatingText(w / 2, 220, `💚 +${Math.round(effects.heal)}`, '#2ecc71');
       playHeal();
     }
 
     // Armor
     if (effects.armor > 0) {
       h.armor = (h.armor || 0) + effects.armor;
-      this.showFloatingText(this.scale.width / 2 - 40, 260, `+${Math.round(effects.armor)} 🛡️`, '#3498db');
+      this.showFloatingText(w / 2 - 40, 260, `🛡 +${Math.round(effects.armor)}`, '#3498db');
     }
 
     // Gold
     if (effects.gold > 0) {
       this.runState.gold += effects.gold;
       this.goldText.setText(`💰 ${this.runState.gold}`);
+      this.showFloatingText(w / 2, 30, `+${effects.gold}g`, '#f1c40f');
     }
 
     // Skill charge
     if (effects.charge > 0) {
       h.skillCharge = (h.skillCharge || 0) + effects.charge;
+      this.showFloatingText(w / 2 + 60, 260, `⭐ +${effects.charge}`, '#9b59b6');
     }
 
     // Lifesteal from equipment
     if (effects.lifestealHeal > 0) {
       h.currentHp = Math.min(h.maxHp, h.currentHp + effects.lifestealHeal);
+      this.showFloatingText(w / 2 + 80, 220, `🩸 +${Math.round(effects.lifestealHeal)}`, '#e74c3c');
     }
 
     // Update displays
@@ -1076,7 +1176,8 @@ export class CombatScene extends Phaser.Scene {
     }
 
     // Enemy turn
-    this.time.delayedCall(300, () => this.enemyTurn());
+    this.showTurnBanner('ENEMY TURN', '#e74c3c');
+    this.time.delayedCall(500, () => this.enemyTurn());
   }
 
   enemyTurn() {
@@ -1148,9 +1249,13 @@ export class CombatScene extends Phaser.Scene {
       return;
     }
 
+    // Update intent display
+    this.updateEnemyIntent();
+
     // Re-enable input for next turn
     this.time.delayedCall(400, () => {
       this.inputEnabled = true;
+      this.showTurnBanner('YOUR TURN', '#2ecc71');
     });
   }
 
@@ -1616,5 +1721,96 @@ export class CombatScene extends Phaser.Scene {
         repeat: 1,
       });
     }
+  }
+
+  // ── TUTORIAL ──────────────────────────────────────────────────
+
+  showTutorial() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    // Dark overlay
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.75)
+      .setDepth(100).setInteractive();
+
+    // Tutorial card
+    const cardW = w - 80;
+    const cardH = 520;
+    const cardY = h / 2 - 20;
+
+    const card = this.add.graphics().setDepth(101);
+    card.fillStyle(0x1a1a2e, 0.97);
+    card.fillRoundedRect(w / 2 - cardW / 2, cardY - cardH / 2, cardW, cardH, 14);
+    card.lineStyle(2, 0xf1c40f, 0.5);
+    card.strokeRoundedRect(w / 2 - cardW / 2, cardY - cardH / 2, cardW, cardH, 14);
+
+    // Title
+    this.add.text(w / 2, cardY - cardH / 2 + 35, 'HOW TO PLAY', {
+      fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(102);
+
+    // Instructions
+    const instructions = [
+      { icon: '👆', text: 'Tap a gem, then tap an adjacent\ngem to swap them' },
+      { icon: '👉', text: 'Or swipe/drag to swap gems' },
+      { icon: '💥', text: 'Match 3+ same-color gems in a\nrow or column' },
+      { icon: '⚔', color: '#e74c3c', text: 'Red = Physical ATK damage' },
+      { icon: '🔥', color: '#e67e22', text: 'Orange = Magic ATK damage' },
+      { icon: '🛡', color: '#3498db', text: 'Blue = Gain armor (DEF)' },
+      { icon: '💚', color: '#2ecc71', text: 'Green = Heal HP' },
+      { icon: '💰', color: '#f1c40f', text: 'Gold = Earn gold' },
+      { icon: '⭐', color: '#9b59b6', text: 'Purple = Charge skill' },
+    ];
+
+    instructions.forEach((inst, i) => {
+      const iy = cardY - cardH / 2 + 80 + i * 42;
+      this.add.text(w / 2 - cardW / 2 + 40, iy, inst.icon, {
+        fontSize: '20px',
+      }).setOrigin(0, 0.5).setDepth(102);
+      this.add.text(w / 2 - cardW / 2 + 80, iy, inst.text, {
+        fontSize: '13px', fontFamily: 'monospace',
+        color: inst.color || '#dfe6e9',
+        lineSpacing: 3,
+      }).setOrigin(0, 0.5).setDepth(102);
+    });
+
+    // Dismiss button
+    const btnY = cardY + cardH / 2 - 40;
+    const btnGfx = this.add.graphics().setDepth(102);
+    btnGfx.fillStyle(0xf39c12, 0.2);
+    btnGfx.fillRoundedRect(w / 2 - 100, btnY - 20, 200, 40, 8);
+    btnGfx.lineStyle(1.5, 0xf39c12, 0.6);
+    btnGfx.strokeRoundedRect(w / 2 - 100, btnY - 20, 200, 40, 8);
+
+    this.add.text(w / 2, btnY, 'GOT IT!', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#f39c12',
+      stroke: '#000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(103);
+
+    const dismissBtn = this.add.rectangle(w / 2, btnY, 200, 40, 0x000000, 0)
+      .setInteractive({ useHandCursor: true }).setDepth(104);
+
+    // Store all tutorial elements for cleanup
+    const tutorialElements = [overlay, card, btnGfx, dismissBtn];
+
+    dismissBtn.on('pointerdown', () => {
+      this.runState._tutorialShown = true;
+      // Fade out all tutorial elements
+      tutorialElements.forEach(el => {
+        this.tweens.add({
+          targets: el, alpha: 0, duration: 200,
+          onComplete: () => el.destroy(),
+        });
+      });
+      // Also destroy text children (they aren't in the array but will be cleaned with scene)
+      this.time.delayedCall(250, () => {
+        this.inputEnabled = true;
+        this.showTurnBanner('YOUR TURN', '#2ecc71');
+      });
+    });
+
+    // Also dismiss on overlay tap
+    overlay.on('pointerdown', () => dismissBtn.emit('pointerdown'));
   }
 }

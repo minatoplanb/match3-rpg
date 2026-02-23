@@ -5,6 +5,9 @@ import { MenuScene } from './game/scenes/MenuScene.js';
 import { MapScene } from './game/scenes/MapScene.js';
 import { CombatScene } from './game/scenes/CombatScene.js';
 import { RewardScene } from './game/scenes/RewardScene.js';
+import { ShopScene } from './game/scenes/ShopScene.js';
+import { RestScene } from './game/scenes/RestScene.js';
+import { MysteryScene } from './game/scenes/MysteryScene.js';
 import { GameOverScene } from './game/scenes/GameOverScene.js';
 
 const config = {
@@ -17,7 +20,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   backgroundColor: '#1a1a2e',
-  scene: [BootScene, MenuScene, MapScene, CombatScene, RewardScene, GameOverScene],
+  scene: [BootScene, MenuScene, MapScene, CombatScene, RewardScene, ShopScene, RestScene, MysteryScene, GameOverScene],
   plugins: {
     scene: [{
       key: 'rexBoard',
