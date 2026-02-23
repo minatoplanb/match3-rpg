@@ -2,7 +2,7 @@
  * MapScene — Floor map with 3 node choices per floor
  * V2: Polished cards, better visual hierarchy, progress bar
  */
-import { MAP, ECONOMY, FLOOR_ENCOUNTERS, BOSSES } from '../../config/balance.js';
+import { MAP, ECONOMY, ENEMIES, FLOOR_ENCOUNTERS, BOSSES } from '../../config/balance.js';
 import { playSwap } from '../systems/SoundManager.js';
 
 export class MapScene extends Phaser.Scene {
@@ -319,30 +319,47 @@ export class MapScene extends Phaser.Scene {
   }
 
   createNodeData(type) {
+    // Dynamic enemy info for combat nodes
+    const encounter = FLOOR_ENCOUNTERS[this.floor];
+    let enemyName = '';
+    if (encounter && encounter.enemies) {
+      const key = Phaser.Utils.Array.GetRandom(encounter.enemies);
+      const template = ENEMIES[key];
+      if (template) enemyName = template.name;
+    }
+
+    const h = this.hero;
+    const healAmt = Math.round(h.maxHp * ECONOMY.restNodeHeal);
+    const missingHp = h.maxHp - h.currentHp;
+
     const configs = {
       combat: {
         type: 'combat', icon: '⚔️', label: 'Combat',
-        desc: 'Fight an enemy.\nReward: gold + item choice.',
+        desc: enemyName
+          ? `Fight: ${enemyName}\nReward: gold + item choice.`
+          : 'Fight an enemy.\nReward: gold + item choice.',
         textColor: '#e74c3c', borderColor: 0xe74c3c,
       },
       elite: {
         type: 'elite', icon: '⚡', label: 'Elite Combat',
-        desc: 'A stronger foe (1.5x stats).\nBetter rewards!',
+        desc: enemyName
+          ? `Fight: ${enemyName} (1.5x stats)\nBetter rewards!`
+          : 'A stronger foe (1.5x stats).\nBetter rewards!',
         textColor: '#ffa502', borderColor: 0xffa502,
       },
       shop: {
         type: 'shop', icon: '🛒', label: 'Shop',
-        desc: `Buy potions.\nSmall: ${ECONOMY.shopPrices.smallPotion}g  Large: ${ECONOMY.shopPrices.largePotion}g`,
+        desc: `Buy items, potions, and upgrades.\nYour gold: ${this.runState.gold}g`,
         textColor: '#f39c12', borderColor: 0xf39c12,
       },
       rest: {
-        type: 'rest', icon: '🏕️', label: 'Rest',
-        desc: `Heal ${Math.round(ECONOMY.restNodeHeal * 100)}% of max HP.\nSometimes peace is the best weapon.`,
+        type: 'rest', icon: '🔥', label: 'Campfire',
+        desc: `Heal, train, or meditate.\nHeal: +${Math.min(healAmt, missingHp)} HP (${Math.round(ECONOMY.restNodeHeal * 100)}%)`,
         textColor: '#2ecc71', borderColor: 0x2ecc71,
       },
       mystery: {
         type: 'mystery', icon: '❓', label: 'Mystery',
-        desc: 'Random event.\nCould be great... or terrible.',
+        desc: 'A strange encounter awaits...\nRisk and reward in equal measure.',
         textColor: '#6c5ce7', borderColor: 0x6c5ce7,
       },
       treasure: {

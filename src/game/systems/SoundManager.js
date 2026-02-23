@@ -4,8 +4,24 @@
  */
 
 let audioCtx = null;
+let _muted = false;
+
+// Load mute preference from localStorage
+try {
+  _muted = localStorage.getItem('match3rpg_muted') === 'true';
+} catch (e) { /* localStorage unavailable */ }
+
+export function isMuted() { return _muted; }
+
+export function toggleMute() {
+  _muted = !_muted;
+  try { localStorage.setItem('match3rpg_muted', _muted); } catch (e) { /* */ }
+  if (_muted) stopBGM();
+  return _muted;
+}
 
 function getCtx() {
+  if (_muted) return null;
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
@@ -20,6 +36,7 @@ function getCtx() {
 
 export function playGemMatch(comboLevel = 1) {
   const ctx = getCtx();
+  if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -37,6 +54,7 @@ export function playGemMatch(comboLevel = 1) {
 
 export function playSwap() {
   const ctx = getCtx();
+  if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -53,6 +71,7 @@ export function playSwap() {
 
 export function playInvalidSwap() {
   const ctx = getCtx();
+  if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -69,6 +88,7 @@ export function playInvalidSwap() {
 
 export function playDamage() {
   const ctx = getCtx();
+  if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -86,6 +106,7 @@ export function playDamage() {
 
 export function playHeal() {
   const ctx = getCtx();
+  if (!ctx) return;
   const t = ctx.currentTime;
 
   // Two-note arpeggio (C5 → E5)
@@ -105,6 +126,7 @@ export function playHeal() {
 
 export function playEnemyHit() {
   const ctx = getCtx();
+  if (!ctx) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -122,6 +144,7 @@ export function playEnemyHit() {
 
 export function playSkill() {
   const ctx = getCtx();
+  if (!ctx) return;
   const t = ctx.currentTime;
 
   // Rising sweep
@@ -142,6 +165,7 @@ export function playSkill() {
 
 export function playVictory() {
   const ctx = getCtx();
+  if (!ctx) return;
   const t = ctx.currentTime;
 
   // Victory fanfare: C5 → E5 → G5 → C6
@@ -163,6 +187,7 @@ export function playVictory() {
 
 export function playDefeat() {
   const ctx = getCtx();
+  if (!ctx) return;
   const t = ctx.currentTime;
 
   // Descending minor notes
@@ -184,6 +209,7 @@ export function playDefeat() {
 
 export function playBossAppear() {
   const ctx = getCtx();
+  if (!ctx) return;
   const t = ctx.currentTime;
 
   // Ominous low drone + hit
@@ -204,9 +230,10 @@ export function playBossAppear() {
 let bgmNodes = null;
 
 export function startBGM() {
-  if (bgmNodes) return; // Already playing
+  if (bgmNodes || _muted) return;
 
   const ctx = getCtx();
+  if (!ctx) return;
 
   // Simple ambient loop: alternating low chords
   const gainNode = ctx.createGain();

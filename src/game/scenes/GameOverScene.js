@@ -89,7 +89,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // Stats card
     const cardW = 450;
-    const cardH = 280;
+    const cardH = 320;
     const cardY = height / 2 - 10;
 
     const cardGfx = this.add.graphics();
@@ -106,11 +106,13 @@ export class GameOverScene extends Phaser.Scene {
 
     // Stats
     const shards = this.calcSoulShards();
+    const s = this.runState.stats || {};
     const stats = [
       { label: 'Hero', value: this.hero?.nameZh || 'Unknown', color: '#dfe6e9' },
       { label: 'Floors Cleared', value: `${this.floorsCleared} / 20`, color: '#dfe6e9' },
+      { label: 'Enemies Slain', value: `${s.enemiesKilled || 0}`, color: '#e74c3c' },
+      { label: 'Turns Played', value: `${s.turnsPlayed || 0}`, color: '#74b9ff' },
       { label: 'Gold Earned', value: `${this.runState.gold || 0}`, color: '#f1c40f' },
-      { label: 'Potions Used', value: `${Math.max(0, 2 - (this.runState.potions || 0))}`, color: '#2ecc71' },
       { label: 'Soul Shards', value: `${shards}`, color: '#9b59b6' },
     ];
 

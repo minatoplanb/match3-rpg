@@ -11,6 +11,90 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    const { width, height } = this.scale;
+
+    // Loading screen background
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x0a0a1e, 0x0a0a1e, 0x0f1a3e, 0x0f1a3e, 1);
+    bg.fillRect(0, 0, width, height);
+
+    // Game title
+    this.add.text(width / 2, height / 2 - 80, 'MATCH-3 RPG', {
+      fontSize: '36px', fontFamily: 'monospace', color: '#f1c40f',
+      stroke: '#000', strokeThickness: 5,
+    }).setOrigin(0.5);
+
+    this.add.text(width / 2, height / 2 - 40, 'Puzzle Quest Roguelike', {
+      fontSize: '14px', fontFamily: 'monospace', color: '#74b9ff',
+    }).setOrigin(0.5);
+
+    // Loading bar
+    const barW = 300;
+    const barH = 16;
+    const barX = width / 2 - barW / 2;
+    const barY = height / 2 + 20;
+
+    const barBg = this.add.graphics();
+    barBg.fillStyle(0x1a1a2e, 0.9);
+    barBg.fillRoundedRect(barX, barY, barW, barH, barH / 2);
+    barBg.lineStyle(1, 0x636e72, 0.4);
+    barBg.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
+
+    const barFill = this.add.graphics();
+    const loadText = this.add.text(width / 2, barY + barH + 18, 'Loading...', {
+      fontSize: '12px', fontFamily: 'monospace', color: '#636e72',
+    }).setOrigin(0.5);
+
+    // Simulate loading steps with delayed calls so the bar can update
+    const totalSteps = 5;
+    let step = 0;
+
+    const updateBar = (progress, label) => {
+      barFill.clear();
+      barFill.fillStyle(0xf1c40f, 0.9);
+      barFill.fillRoundedRect(barX + 2, barY + 2, (barW - 4) * progress, barH - 4, (barH - 4) / 2);
+      loadText.setText(label);
+    };
+
+    // Step 1: Generate gem textures
+    this.time.delayedCall(100, () => {
+      updateBar(0.1, 'Generating gems...');
+      this.generateGemTextures();
+      step++;
+    });
+
+    // Step 2: Generate enemy textures
+    this.time.delayedCall(250, () => {
+      updateBar(0.4, 'Creating enemies...');
+      this.generateEnemyTextures();
+      step++;
+    });
+
+    // Step 3: Generate UI textures
+    this.time.delayedCall(400, () => {
+      updateBar(0.6, 'Building UI...');
+      this.generateUITextures();
+      step++;
+    });
+
+    // Step 4: Generate special tiles
+    this.time.delayedCall(500, () => {
+      updateBar(0.85, 'Preparing specials...');
+      this.generateSpecialTextures();
+      step++;
+    });
+
+    // Step 5: Done — transition
+    this.time.delayedCall(700, () => {
+      updateBar(1.0, 'Ready!');
+      this.time.delayedCall(300, () => {
+        this.cameras.main.fadeOut(300);
+        this.time.delayedCall(300, () => this.scene.start('Menu'));
+      });
+    });
+  }
+
+  generateGemTextures() {
     const r = BOARD.gemRadius;
     const d = r * 2;
     const pad = 4; // padding for glow
@@ -67,22 +151,25 @@ export class BootScene extends Phaser.Scene {
     });
 
     // Burned gem overlay (for Dragon Emperor mechanic)
-    const bg = this.add.graphics();
-    bg.fillStyle(0xff0000, 0.4);
-    bg.fillCircle(r, r, r - 2);
-    bg.lineStyle(3, 0xff0000, 0.8);
-    bg.lineBetween(r - 12, r - 12, r + 12, r + 12);
-    bg.lineBetween(r + 12, r - 12, r - 12, r + 12);
-    bg.generateTexture('gem_burned', d, d);
-    bg.destroy();
+    const burnedG = this.add.graphics();
+    burnedG.fillStyle(0xff0000, 0.4);
+    burnedG.fillCircle(r, r, r - 2);
+    burnedG.lineStyle(3, 0xff0000, 0.8);
+    burnedG.lineBetween(r - 12, r - 12, r + 12, r + 12);
+    burnedG.lineBetween(r + 12, r - 12, r - 12, r + 12);
+    burnedG.generateTexture('gem_burned', d, d);
+    burnedG.destroy();
+  }
 
-    // Special tile textures
+  generateSpecialTextures() {
     this.makeSpecialGem('gem_line_h', 0xffffff, 'h');
     this.makeSpecialGem('gem_line_v', 0xffffff, 'v');
     this.makeSpecialGem('gem_bomb', 0xff6b6b, 'bomb');
     this.makeSpecialGem('gem_color_bomb', 0xffffff, 'star');
+  }
 
-    // Map node icons — improved with border ring
+  generateUITextures() {
+    // Map node icons
     this.makeNodeIcon('node_combat', 18, 0xe74c3c, '⚔');
     this.makeNodeIcon('node_elite', 18, 0xd63031, '⚡');
     this.makeNodeIcon('node_shop', 18, 0xf39c12, '$');
@@ -91,16 +178,11 @@ export class BootScene extends Phaser.Scene {
     this.makeNodeIcon('node_boss', 24, 0xff0000, '☠');
     this.makeNodeIcon('node_treasure', 18, 0xf1c40f, '★');
 
-    // Generate enemy sprite textures for each enemy type
-    this.generateEnemyTextures();
-
-    // UI textures
+    // Bar textures
     this.makeBarTexture('bar_bg', 200, 20, 0x1a1a2e, 0x2d3436);
     this.makeBarTexture('bar_hp_green', 200, 20, 0x00b894, 0x55efc4);
     this.makeBarTexture('bar_hp_red', 200, 20, 0xd63031, 0xff7675);
     this.makeBarTexture('bar_skill', 200, 14, 0x6c5ce7, 0xa29bfe);
-
-    this.scene.start('Menu');
   }
 
   // ── GEM SYMBOLS ───────────────────────────────────────────

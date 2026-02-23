@@ -16,7 +16,7 @@ import { resolveMatches } from '../systems/MatchResolver.js';
 import {
   playGemMatch, playSwap, playInvalidSwap, playDamage, playHeal,
   playEnemyHit, playSkill, playVictory, playDefeat, playBossAppear,
-  startBGM, stopBGM
+  startBGM, stopBGM, isMuted, toggleMute
 } from '../systems/SoundManager.js';
 
 export class CombatScene extends Phaser.Scene {
@@ -393,15 +393,50 @@ export class CombatScene extends Phaser.Scene {
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5, 0).setDepth(30);
 
-    // Potions
-    this.potionText = this.add.text(w - 20, 12, `🧪 ${this.runState.potions}`, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#2ecc71',
-      stroke: '#000', strokeThickness: 2,
-    }).setOrigin(1, 0).setDepth(30);
+    // Potion button — proper tappable area
+    const potBtnX = w - 65;
+    const potBtnY = 18;
+    const potBtnW = 110;
+    const potBtnH = 32;
+    this.potionBtnBg = this.add.graphics().setDepth(29);
+    this.potionBtnBg.fillStyle(0x2ecc71, 0.12);
+    this.potionBtnBg.fillRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
+    this.potionBtnBg.lineStyle(1, 0x2ecc71, 0.4);
+    this.potionBtnBg.strokeRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
 
-    // Potion button (tap potions text to use)
-    this.potionText.setInteractive({ useHandCursor: true });
-    this.potionText.on('pointerdown', () => this.usePotion());
+    this.potionText = this.add.text(potBtnX, potBtnY, `🧪 ${this.runState.potions}  USE`, {
+      fontSize: '14px', fontFamily: 'monospace', color: '#2ecc71',
+      stroke: '#000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(30);
+
+    const potBtn = this.add.rectangle(potBtnX, potBtnY, potBtnW, potBtnH, 0x000000, 0)
+      .setInteractive({ useHandCursor: true }).setDepth(31);
+    potBtn.on('pointerdown', (pointer) => { pointer.event.stopPropagation(); this.usePotion(); });
+    potBtn.on('pointerover', () => {
+      this.potionBtnBg.clear();
+      this.potionBtnBg.fillStyle(0x2ecc71, 0.25);
+      this.potionBtnBg.fillRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
+      this.potionBtnBg.lineStyle(1.5, 0x2ecc71, 0.6);
+      this.potionBtnBg.strokeRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
+    });
+    potBtn.on('pointerout', () => {
+      this.potionBtnBg.clear();
+      this.potionBtnBg.fillStyle(0x2ecc71, 0.12);
+      this.potionBtnBg.fillRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
+      this.potionBtnBg.lineStyle(1, 0x2ecc71, 0.4);
+      this.potionBtnBg.strokeRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
+    });
+
+    // Sound toggle — small icon top-left
+    const soundIcon = isMuted() ? '🔇' : '🔊';
+    this.soundToggle = this.add.text(20, 36, soundIcon, {
+      fontSize: '16px',
+    }).setDepth(31).setInteractive({ useHandCursor: true });
+    this.soundToggle.on('pointerdown', () => {
+      const muted = toggleMute();
+      this.soundToggle.setText(muted ? '🔇' : '🔊');
+      if (!muted) startBGM();
+    });
   }
 
   // ── GEM LEGEND ─────────────────────────────────────────────
@@ -645,7 +680,8 @@ export class CombatScene extends Phaser.Scene {
     const { cellSize, originX, originY } = BOARD;
     const x = originX + col * cellSize + cellSize / 2;
     const y = originY + row * cellSize + cellSize / 2;
-    const gemId = this.boardData[row][col].gemId;
+    const data = this.boardData[row][col];
+    const gemId = data.gemId;
 
     const sprite = this.add.image(x, y, `gem_${gemId}`)
       .setDisplaySize(cellSize - 8, cellSize - 8)
@@ -655,6 +691,11 @@ export class CombatScene extends Phaser.Scene {
     sprite.setData('row', row);
     sprite.setData('col', col);
 
+    // Add special overlay if this gem has a special property
+    if (data.special) {
+      this.addSpecialOverlay(sprite, data.special, x, y, cellSize);
+    }
+
     // BUG FIX: read row/col from sprite DATA, not closure capture.
     // After dropAndFill, sprites get reused and their data updated,
     // but closure-captured values would still point to the OLD position.
@@ -663,6 +704,34 @@ export class CombatScene extends Phaser.Scene {
     });
 
     return sprite;
+  }
+
+  addSpecialOverlay(gemSprite, specialType, x, y, cellSize) {
+    const textureKey = specialType === 'line_h' ? 'gem_line_h'
+      : specialType === 'line_v' ? 'gem_line_v'
+      : specialType === 'bomb' ? 'gem_bomb'
+      : specialType === 'color_bomb' ? 'gem_color_bomb'
+      : null;
+
+    if (!textureKey) return;
+
+    const overlay = this.add.image(x, y, textureKey)
+      .setDisplaySize(cellSize - 8, cellSize - 8)
+      .setDepth(11)
+      .setAlpha(0.8);
+
+    // Store overlay reference on the gem sprite for cleanup
+    gemSprite.setData('specialOverlay', overlay);
+
+    // Pulse animation for special gems
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.4,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   getGemPosition(row, col) {
@@ -964,6 +1033,10 @@ export class CombatScene extends Phaser.Scene {
       const sprite = this.gemSprites[r][c];
       if (!sprite) { completed++; continue; }
 
+      // Destroy special overlay if present
+      const overlay = sprite.getData('specialOverlay');
+      if (overlay) overlay.destroy();
+
       this.tweens.add({
         targets: sprite,
         scaleX: 0, scaleY: 0, alpha: 0,
@@ -1043,8 +1116,11 @@ export class CombatScene extends Phaser.Scene {
         if (entry.oldRow !== newRow) {
           // Gem needs to drop — animate it
           animations++;
+          const dropTargets = [sprite];
+          const specialOvl = sprite.getData('specialOverlay');
+          if (specialOvl) dropTargets.push(specialOvl);
           this.tweens.add({
-            targets: sprite,
+            targets: dropTargets,
             y: targetPos.y,
             duration: 200,
             ease: 'Bounce.easeOut',
@@ -1175,14 +1251,139 @@ export class CombatScene extends Phaser.Scene {
       return;
     }
 
+    // Check for dead board (no valid moves)
+    if (!this.hasValidMoves()) {
+      this.reshuffleBoard();
+      return;
+    }
+
     // Enemy turn
     this.showTurnBanner('ENEMY TURN', '#e74c3c');
     this.time.delayedCall(500, () => this.enemyTurn());
   }
 
+  hasValidMoves() {
+    const { rows, cols } = BOARD;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const gemId = this.boardData[r][c].gemId;
+        if (gemId < 0) continue;
+
+        // Try swap right
+        if (c + 1 < cols) {
+          this.swapBoardData(r, c, r, c + 1);
+          if (this.findAllMatches().length > 0) {
+            this.swapBoardData(r, c, r, c + 1);
+            return true;
+          }
+          this.swapBoardData(r, c, r, c + 1);
+        }
+
+        // Try swap down
+        if (r + 1 < rows) {
+          this.swapBoardData(r, c, r + 1, c);
+          if (this.findAllMatches().length > 0) {
+            this.swapBoardData(r, c, r + 1, c);
+            return true;
+          }
+          this.swapBoardData(r, c, r + 1, c);
+        }
+      }
+    }
+    return false;
+  }
+
+  swapBoardData(r1, c1, r2, c2) {
+    const temp = this.boardData[r1][c1];
+    this.boardData[r1][c1] = this.boardData[r2][c2];
+    this.boardData[r2][c2] = temp;
+  }
+
+  reshuffleBoard() {
+    const w = this.scale.width;
+
+    // Show reshuffle banner
+    const banner = this.add.text(w / 2, BOARD.originY + (BOARD.rows * BOARD.cellSize) / 2,
+      'NO MOVES — RESHUFFLING!', {
+      fontSize: '20px', fontFamily: 'monospace', color: '#f39c12',
+      stroke: '#000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(60).setAlpha(0);
+
+    this.tweens.add({
+      targets: banner,
+      alpha: 1, duration: 200,
+    });
+
+    // Shake all gems out
+    const { rows, cols } = BOARD;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const sprite = this.gemSprites[r][c];
+        if (sprite) {
+          this.tweens.add({
+            targets: sprite,
+            scaleX: 0, scaleY: 0, alpha: 0,
+            duration: 200,
+            delay: Math.random() * 150,
+            onComplete: () => sprite.destroy(),
+          });
+        }
+      }
+    }
+
+    this.time.delayedCall(500, () => {
+      // Rebuild board data ensuring no initial matches
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          let gemId;
+          do {
+            gemId = Math.floor(Math.random() * GEM_COUNT);
+          } while (this.wouldMatchAt(r, c, gemId));
+          this.boardData[r][c] = { gemId, special: null };
+        }
+      }
+
+      // Recreate sprites with drop animation
+      this.gemSprites = [];
+      for (let r = 0; r < rows; r++) {
+        this.gemSprites[r] = [];
+        for (let c = 0; c < cols; c++) {
+          const sprite = this.createGemSprite(r, c);
+          const targetY = sprite.y;
+          sprite.y = BOARD.originY - (rows - r) * BOARD.cellSize;
+          this.tweens.add({
+            targets: sprite,
+            y: targetY,
+            duration: 300,
+            ease: 'Bounce.easeOut',
+            delay: 30 * r + 15 * c,
+          });
+          this.gemSprites[r][c] = sprite;
+        }
+      }
+
+      // Fade out banner
+      this.tweens.add({
+        targets: banner, alpha: 0, duration: 300, delay: 400,
+        onComplete: () => banner.destroy(),
+      });
+
+      // If still no moves after reshuffle, reshuffle again
+      this.time.delayedCall(800, () => {
+        if (!this.hasValidMoves()) {
+          this.reshuffleBoard();
+        } else {
+          this.showTurnBanner('ENEMY TURN', '#e74c3c');
+          this.time.delayedCall(500, () => this.enemyTurn());
+        }
+      });
+    });
+  }
+
   enemyTurn() {
     if (this.battleOver) return;
     this.turnCount++;
+    this.runState.stats.turnsPlayed = (this.runState.stats.turnsPlayed || 0) + 1;
 
     const e = this.enemy;
     const h = this.hero;
@@ -1468,6 +1669,7 @@ export class CombatScene extends Phaser.Scene {
     this.inputEnabled = false;
     stopBGM();
     playVictory();
+    this.runState.stats.enemiesKilled = (this.runState.stats.enemiesKilled || 0) + 1;
 
     const w = this.scale.width;
 
@@ -1661,8 +1863,9 @@ export class CombatScene extends Phaser.Scene {
     const heal = Math.round(this.hero.maxHp * ECONOMY.smallPotionHeal);
     this.hero.currentHp = Math.min(this.hero.maxHp, this.hero.currentHp + heal);
     this.updateHeroHP();
-    this.potionText.setText(`🧪 ${this.runState.potions}`);
-    this.showFloatingText(this.scale.width - 80, 40, `+${heal}`, '#2ecc71');
+    this.potionText.setText(`🧪 ${this.runState.potions}  USE`);
+    this.showFloatingText(this.scale.width - 80, 50, `💚 +${heal}`, '#2ecc71');
+    playHeal();
   }
 
   // ── VISUAL EFFECTS ───────────────────────────────────────────

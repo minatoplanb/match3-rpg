@@ -3,6 +3,7 @@
  * V2: Polished with animated title, hero icons, background effects
  */
 import { HEROES, ECONOMY } from '../../config/balance.js';
+import { isMuted, toggleMute } from '../systems/SoundManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -229,10 +230,20 @@ export class MenuScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5);
 
+    // Sound toggle
+    const soundLabel = isMuted() ? '🔇 Sound OFF' : '🔊 Sound ON';
+    const soundText = this.add.text(width - 25, height - 25, soundLabel, {
+      fontSize: '12px', fontFamily: 'monospace', color: '#636e72',
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+    soundText.on('pointerdown', () => {
+      const muted = toggleMute();
+      soundText.setText(muted ? '🔇 Sound OFF' : '🔊 Sound ON');
+    });
+
     // Version
-    this.add.text(width / 2, height - 15, 'v0.3.0', {
+    this.add.text(25, height - 15, 'v0.4.0', {
       fontSize: '10px', fontFamily: 'monospace', color: '#2d2d4a',
-    }).setOrigin(0.5);
+    }).setOrigin(0, 0.5);
 
     this.cameras.main.fadeIn(500);
   }
