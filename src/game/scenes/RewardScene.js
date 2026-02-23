@@ -119,11 +119,28 @@ export class RewardScene extends Phaser.Scene {
         cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
 
-      // Click to claim
+      // Click to claim — press feedback
       card.on('pointerdown', () => {
         if (this._chosen) return;
         this._chosen = true;
         reward.apply(this.hero, this.runState);
+
+        // Flash card bright
+        cardGfx.clear();
+        cardGfx.fillStyle(reward.borderColor, 0.25);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(2.5, 0xffffff, 0.9);
+        cardGfx.strokeRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(reward.borderColor, 1);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+
+        // Scale bounce
+        this.tweens.add({
+          targets: [cardGfx, card],
+          scaleX: 0.96, scaleY: 0.96,
+          duration: 80, yoyo: true,
+        });
+
         this.cameras.main.fadeOut(300);
         this.time.delayedCall(300, () => {
           this.runState.floor++;

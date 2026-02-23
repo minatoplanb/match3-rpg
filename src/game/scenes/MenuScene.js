@@ -180,8 +180,25 @@ export class MenuScene extends Phaser.Scene {
           { tl: 3, bl: 3, tr: 3, br: 3 });
       });
 
-      // Click to start
+      // Click to start — press feedback
       card.on('pointerdown', () => {
+        // Flash card bright
+        cardGfx.clear();
+        cardGfx.fillStyle(heroColorInt, 0.2);
+        cardGfx.fillRoundedRect(x - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(2.5, 0xffffff, 0.9);
+        cardGfx.strokeRoundedRect(x - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(heroColorInt, 1);
+        cardGfx.fillRoundedRect(x - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16,
+          { tl: 3, bl: 3, tr: 3, br: 3 });
+
+        // Scale bounce
+        this.tweens.add({
+          targets: [cardGfx, card],
+          scaleX: 0.96, scaleY: 0.96,
+          duration: 80, yoyo: true,
+        });
+
         this.cameras.main.fadeOut(300);
         this.time.delayedCall(300, () => {
           const heroState = {

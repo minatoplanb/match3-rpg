@@ -253,13 +253,31 @@ export class MapScene extends Phaser.Scene {
         cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
 
-      // Click
+      // Click — press feedback + flash
       card.on('pointerdown', () => {
         if (this._nodeSelected) return;
         this._nodeSelected = true;
         playSwap();
-        this.cameras.main.fadeOut(300);
-        this.time.delayedCall(300, () => this.executeNode(node));
+
+        // Flash the card bright
+        cardGfx.clear();
+        cardGfx.fillStyle(node.borderColor, 0.25);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(2.5, 0xffffff, 0.9);
+        cardGfx.strokeRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(node.borderColor, 1);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+
+        // Scale bounce on all card children
+        this.tweens.add({
+          targets: [cardGfx, iconBg, card],
+          scaleX: 0.96, scaleY: 0.96,
+          duration: 80, yoyo: true,
+          onComplete: () => {
+            this.cameras.main.fadeOut(300);
+            this.time.delayedCall(300, () => this.executeNode(node));
+          },
+        });
       });
     });
   }
