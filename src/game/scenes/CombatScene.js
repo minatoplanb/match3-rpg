@@ -123,10 +123,10 @@ export class CombatScene extends Phaser.Scene {
 
   drawBackground(w, h, theme) {
     const colors = {
-      grassland: [0x1a3a1a, 0x0d1f0d],
-      desert: [0x3a2a1a, 0x1f150d],
-      frostlands: [0x1a2a3a, 0x0d1520],
-      infernal: [0x3a1a1a, 0x200d0d],
+      grassland: [0x0f2b0f, 0x081808],
+      desert: [0x2b1f0f, 0x181008],
+      frostlands: [0x0f1f2b, 0x080d18],
+      infernal: [0x2b0f0f, 0x180808],
     };
     const [top, bottom] = colors[theme] || colors.grassland;
 
@@ -135,6 +135,37 @@ export class CombatScene extends Phaser.Scene {
     bg.fillGradientStyle(top, top, bottom, bottom, 1);
     bg.fillRect(0, 0, w, h);
     bg.setDepth(0);
+
+    // Floating ambient particles
+    const particleColors = {
+      grassland: 0x2ecc71,
+      desert: 0xf39c12,
+      frostlands: 0x74b9ff,
+      infernal: 0xe74c3c,
+    };
+    const pColor = particleColors[theme] || 0xffffff;
+
+    for (let i = 0; i < 15; i++) {
+      const px = Math.random() * w;
+      const py = Math.random() * h;
+      const pSize = 1 + Math.random() * 2;
+      const particle = this.add.circle(px, py, pSize, pColor, 0.15 + Math.random() * 0.15)
+        .setDepth(1);
+
+      this.tweens.add({
+        targets: particle,
+        y: py - 30 - Math.random() * 40,
+        x: px + (Math.random() - 0.5) * 30,
+        alpha: 0,
+        duration: 3000 + Math.random() * 4000,
+        repeat: -1,
+        delay: Math.random() * 3000,
+        onRepeat: () => {
+          particle.setPosition(Math.random() * w, h * 0.3 + Math.random() * h * 0.7);
+          particle.setAlpha(0.15 + Math.random() * 0.15);
+        },
+      });
+    }
   }
 
   // ── ENEMY SPAWN ──────────────────────────────────────────────
@@ -196,44 +227,91 @@ export class CombatScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(20);
 
-    // Enemy sprite (colored rectangle as placeholder)
-    const spriteSize = e.isBoss ? 100 : 70;
-    const enemyGfx = this.add.graphics();
-    const eColor = Phaser.Display.Color.HexStringToColor(e.color || '#e74c3c').color;
-    enemyGfx.fillStyle(eColor, 1);
-    enemyGfx.fillRoundedRect(w / 2 - spriteSize / 2, 75, spriteSize, spriteSize, 8);
-    // Eyes
-    enemyGfx.fillStyle(0xffffff, 1);
-    enemyGfx.fillCircle(w / 2 - spriteSize * 0.15, 75 + spriteSize * 0.35, 6);
-    enemyGfx.fillCircle(w / 2 + spriteSize * 0.15, 75 + spriteSize * 0.35, 6);
-    enemyGfx.fillStyle(0x000000, 1);
-    enemyGfx.fillCircle(w / 2 - spriteSize * 0.12, 75 + spriteSize * 0.37, 3);
-    enemyGfx.fillCircle(w / 2 + spriteSize * 0.18, 75 + spriteSize * 0.37, 3);
-    enemyGfx.setDepth(10);
-    this.enemySprite = enemyGfx;
+    // Enemy sprite — use pre-generated texture
+    const spriteSize = e.isBoss ? 120 : 80;
+    const textureKey = this.getEnemyTextureKey();
+    this.enemySprite = this.add.image(w / 2, 75 + spriteSize / 2, textureKey)
+      .setDisplaySize(spriteSize, spriteSize)
+      .setDepth(10);
 
-    // HP bar background
+    // Idle breathing animation
+    this.tweens.add({
+      targets: this.enemySprite,
+      scaleY: this.enemySprite.scaleY * 1.04,
+      scaleX: this.enemySprite.scaleX * 0.97,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Boss pulsing glow
+    if (e.isBoss) {
+      const eColor = Phaser.Display.Color.HexStringToColor(e.color || '#e74c3c').color;
+      this.bossGlow = this.add.circle(w / 2, 75 + spriteSize / 2, spriteSize * 0.55, eColor, 0.15)
+        .setDepth(9);
+      this.tweens.add({
+        targets: this.bossGlow,
+        alpha: 0.05,
+        scaleX: 1.15, scaleY: 1.15,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // HP bar — improved with rounded style
     const barW = 300;
-    const barH = 20;
+    const barH = 22;
     const barX = w / 2 - barW / 2;
-    const barY = 75 + spriteSize + 10;
+    const barY = 75 + spriteSize + 12;
 
-    this.enemyBarBg = this.add.rectangle(barX + barW / 2, barY + barH / 2, barW, barH, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setDepth(20);
-    this.enemyBarFill = this.add.rectangle(barX + 2, barY + 2, barW - 4, barH - 4, 0xe74c3c)
+    // Bar background (rounded)
+    const barBg = this.add.graphics();
+    barBg.fillStyle(0x1a1a2e, 0.9);
+    barBg.fillRoundedRect(barX, barY, barW, barH, barH / 2);
+    barBg.lineStyle(1.5, 0x636e72, 0.5);
+    barBg.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
+    barBg.setDepth(20);
+    this.enemyBarBg = barBg;
+
+    // Bar fill — use a rectangle that we clip visually
+    this.enemyBarFill = this.add.rectangle(barX + 3, barY + 3, barW - 6, barH - 6, 0xe74c3c)
       .setOrigin(0, 0).setDepth(21);
+    // Glossy overlay on bar
+    this.enemyBarGloss = this.add.rectangle(barX + 3, barY + 3, barW - 6, (barH - 6) / 2, 0xffffff)
+      .setOrigin(0, 0).setAlpha(0.15).setDepth(21);
+
     this.enemyHpText = this.add.text(w / 2, barY + barH / 2, `${e.currentHp} / ${e.maxHp}`, {
       fontSize: '12px', fontFamily: 'monospace', color: '#ffffff',
+      stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(22);
 
-    this.enemyBarX = barX + 2;
-    this.enemyBarMaxW = barW - 4;
+    this.enemyBarX = barX + 3;
+    this.enemyBarMaxW = barW - 6;
+  }
+
+  getEnemyTextureKey() {
+    const encounter = FLOOR_ENCOUNTERS[this.floor];
+    if (!encounter) return 'enemy_generic';
+
+    if (encounter.boss) {
+      const key = `enemy_${encounter.boss}`;
+      if (this.textures.exists(key)) return key;
+    } else if (encounter.enemies) {
+      const enemyKey = encounter.enemies[0];
+      const key = `enemy_${enemyKey}`;
+      if (this.textures.exists(key)) return key;
+    }
+    return 'enemy_generic';
   }
 
   updateEnemyHP() {
     const e = this.enemy;
     const ratio = Math.max(0, e.currentHp / e.maxHp);
     this.enemyBarFill.width = this.enemyBarMaxW * ratio;
+    if (this.enemyBarGloss) this.enemyBarGloss.width = this.enemyBarMaxW * ratio;
     this.enemyHpText.setText(`${Math.max(0, e.currentHp)} / ${e.maxHp}`);
 
     // Change color based on HP
@@ -281,23 +359,32 @@ export class CombatScene extends Phaser.Scene {
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(20);
 
-    // HP bar
+    // HP bar — improved rounded style
     const barW = 350;
     const barH = 22;
     const barX = w / 2 - barW / 2;
     const barY = y + 25;
 
-    this.add.rectangle(barX + barW / 2, barY + barH / 2, barW, barH, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setDepth(20);
-    this.heroHpFill = this.add.rectangle(barX + 2, barY + 2, barW - 4, barH - 4, 0x2ecc71)
+    const heroBg = this.add.graphics();
+    heroBg.fillStyle(0x1a1a2e, 0.9);
+    heroBg.fillRoundedRect(barX, barY, barW, barH, barH / 2);
+    heroBg.lineStyle(1.5, 0x636e72, 0.5);
+    heroBg.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
+    heroBg.setDepth(20);
+
+    this.heroHpFill = this.add.rectangle(barX + 3, barY + 3, barW - 6, barH - 6, 0x00b894)
       .setOrigin(0, 0).setDepth(21);
+    // Glossy overlay
+    this.add.rectangle(barX + 3, barY + 3, barW - 6, (barH - 6) / 2, 0xffffff)
+      .setOrigin(0, 0).setAlpha(0.12).setDepth(21);
     this.heroHpText = this.add.text(w / 2, barY + barH / 2,
       `HP ${h.currentHp} / ${h.maxHp}`, {
         fontSize: '12px', fontFamily: 'monospace', color: '#ffffff',
+        stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(22);
 
-    this.heroBarX = barX + 2;
-    this.heroBarMaxW = barW - 4;
+    this.heroBarX = barX + 3;
+    this.heroBarMaxW = barW - 6;
 
     // Armor display
     this.armorText = this.add.text(w / 2, barY + barH + 8, `🛡️ Armor: ${h.armor || 0}`, {
@@ -358,7 +445,7 @@ export class CombatScene extends Phaser.Scene {
 
     if (ratio < 0.25) this.heroHpFill.setFillStyle(0xff0000);
     else if (ratio < 0.5) this.heroHpFill.setFillStyle(0xe67e22);
-    else this.heroHpFill.setFillStyle(0x2ecc71);
+    else this.heroHpFill.setFillStyle(0x00b894);
 
     this.armorText.setText(`🛡️ Armor: ${Math.round(h.armor || 0)}`);
   }
@@ -384,25 +471,42 @@ export class CombatScene extends Phaser.Scene {
   createBoard() {
     const { cols, rows, cellSize, originX, originY } = BOARD;
 
-    // Board background
+    // Board background — darker with subtle border
     const boardBg = this.add.graphics();
-    boardBg.fillStyle(0x000000, 0.4);
+    // Outer shadow
+    boardBg.fillStyle(0x000000, 0.5);
     boardBg.fillRoundedRect(
+      originX - 12, originY - 10,
+      cols * cellSize + 24, rows * cellSize + 22, 14
+    );
+    // Main board area
+    boardBg.fillStyle(0x0a0a1a, 0.85);
+    boardBg.fillRoundedRect(
+      originX - 10, originY - 10,
+      cols * cellSize + 20, rows * cellSize + 20, 12
+    );
+    // Border
+    boardBg.lineStyle(2, 0x4a4a6a, 0.6);
+    boardBg.strokeRoundedRect(
       originX - 10, originY - 10,
       cols * cellSize + 20, rows * cellSize + 20, 12
     );
     boardBg.setDepth(5);
 
-    // Grid lines
-    const grid = this.add.graphics();
-    grid.lineStyle(1, 0xffffff, 0.08);
-    for (let c = 0; c <= cols; c++) {
-      grid.lineBetween(originX + c * cellSize, originY, originX + c * cellSize, originY + rows * cellSize);
+    // Alternating cell backgrounds for checkerboard effect
+    const cellBg = this.add.graphics();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const isDark = (r + c) % 2 === 0;
+        cellBg.fillStyle(isDark ? 0x1a1a3a : 0x22224a, isDark ? 0.4 : 0.3);
+        cellBg.fillRoundedRect(
+          originX + c * cellSize + 2,
+          originY + r * cellSize + 2,
+          cellSize - 4, cellSize - 4, 4
+        );
+      }
     }
-    for (let r = 0; r <= rows; r++) {
-      grid.lineBetween(originX, originY + r * cellSize, originX + cols * cellSize, originY + r * cellSize);
-    }
-    grid.setDepth(6);
+    cellBg.setDepth(6);
 
     // Initialize the board data (2D array)
     this.boardData = [];
@@ -1124,15 +1228,48 @@ export class CombatScene extends Phaser.Scene {
 
   drawSkillButton(w, h) {
     const template = HEROES[this.runState.heroKey];
-    const btnY = h - 30;
+    const btnY = h - 35;
+
+    // Button background
+    const btnW = 220;
+    const btnH = 44;
+    this.skillBtnBg = this.add.graphics();
+    this.skillBtnBg.fillStyle(0x2d3436, 0.9);
+    this.skillBtnBg.fillRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+    this.skillBtnBg.lineStyle(2, 0x6c5ce7, 0.6);
+    this.skillBtnBg.strokeRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+    this.skillBtnBg.setDepth(30);
+
+    // Glossy top
+    const glossG = this.add.graphics();
+    glossG.fillStyle(0xffffff, 0.06);
+    glossG.fillRoundedRect(w / 2 - btnW / 2 + 2, btnY - btnH / 2 + 2, btnW - 4, btnH / 2 - 2,
+      { tl: 8, tr: 8, bl: 0, br: 0 });
+    glossG.setDepth(30);
 
     this.skillBtn = this.add.text(w / 2, btnY, `⚡ ${template.skill.nameZh}`, {
       fontSize: '18px', fontFamily: 'monospace', color: '#b2bec3',
-      backgroundColor: '#2d3436', padding: { x: 16, y: 8 },
       stroke: '#000', strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(30).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setDepth(31);
 
-    this.skillBtn.on('pointerdown', () => this.activateSkill());
+    // Interactive zone
+    const hitZone = this.add.rectangle(w / 2, btnY, btnW, btnH, 0x000000, 0)
+      .setInteractive({ useHandCursor: true }).setDepth(32);
+    hitZone.on('pointerdown', () => this.activateSkill());
+    hitZone.on('pointerover', () => {
+      this.skillBtnBg.clear();
+      this.skillBtnBg.fillStyle(0x3d3d56, 0.95);
+      this.skillBtnBg.fillRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+      this.skillBtnBg.lineStyle(2, 0xa29bfe, 0.8);
+      this.skillBtnBg.strokeRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+    });
+    hitZone.on('pointerout', () => {
+      this.skillBtnBg.clear();
+      this.skillBtnBg.fillStyle(0x2d3436, 0.9);
+      this.skillBtnBg.fillRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+      this.skillBtnBg.lineStyle(2, 0x6c5ce7, 0.6);
+      this.skillBtnBg.strokeRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
+    });
   }
 
   activateSkill() {

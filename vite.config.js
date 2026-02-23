@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: './',
+  base: '/match3-rpg/',
   server: {
     port: 3000,
     host: true,

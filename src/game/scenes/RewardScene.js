@@ -1,6 +1,6 @@
 /**
  * RewardScene — 3-choice rewards after combat
- * Offers: stat boost, equipment, or consumable
+ * V2: Polished cards with rarity glow, better visual hierarchy
  */
 import { REWARDS, ECONOMY } from '../../config/balance.js';
 
@@ -20,58 +20,103 @@ export class RewardScene extends Phaser.Scene {
 
     // Background
     const bg = this.add.graphics();
-    bg.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x1e3a5f, 0x1e3a5f, 1);
+    bg.fillGradientStyle(0x0a0a1e, 0x0a0a1e, 0x0f1a3e, 0x0f1a3e, 1);
     bg.fillRect(0, 0, width, height);
 
+    // Sparkle particles
+    for (let i = 0; i < 12; i++) {
+      const star = this.add.circle(
+        Math.random() * width, Math.random() * height,
+        0.5 + Math.random(), 0xf1c40f, 0.15 + Math.random() * 0.2
+      );
+      this.tweens.add({
+        targets: star, alpha: 0.05,
+        duration: 1200 + Math.random() * 1500, yoyo: true, repeat: -1,
+        delay: Math.random() * 1500,
+      });
+    }
+
     // Title
-    this.add.text(width / 2, 50, 'CHOOSE A REWARD', {
+    this.add.text(width / 2, 45, 'CHOOSE A REWARD', {
       fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
-      stroke: '#000', strokeThickness: 3,
+      stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
+
+    // Decorative line
+    const lineG = this.add.graphics();
+    lineG.lineStyle(1, 0xf1c40f, 0.3);
+    lineG.lineBetween(width / 2 - 120, 65, width / 2 + 120, 65);
 
     // Generate 3 diverse reward options
     const rewards = this.generateRewards();
 
-    const cardH = 220;
-    const cardW = width - 80;
-    const startY = 120;
-    const gap = 25;
+    const cardH = 200;
+    const cardW = width - 60;
+    const startY = 90;
+    const gap = 18;
 
     rewards.forEach((reward, i) => {
       const y = startY + i * (cardH + gap) + cardH / 2;
 
-      const card = this.add.rectangle(width / 2, y, cardW, cardH, 0x2d3436, 0.9)
-        .setStrokeStyle(2, reward.borderColor)
-        .setInteractive({ useHandCursor: true });
+      // Card background
+      const cardGfx = this.add.graphics();
+      cardGfx.fillStyle(0x1a1a2e, 0.92);
+      cardGfx.fillRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+      cardGfx.lineStyle(1.5, reward.borderColor, 0.5);
+      cardGfx.strokeRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+      // Left accent
+      cardGfx.fillStyle(reward.borderColor, 0.7);
+      cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+
+      // Icon circle
+      const iconBg = this.add.graphics();
+      iconBg.fillStyle(reward.borderColor, 0.15);
+      iconBg.fillCircle(width / 2 - cardW / 2 + 55, y - 15, 26);
+      iconBg.lineStyle(1.5, reward.borderColor, 0.3);
+      iconBg.strokeCircle(width / 2 - cardW / 2 + 55, y - 15, 26);
 
       // Icon
-      this.add.text(60, y - 30, reward.icon, { fontSize: '36px' });
+      this.add.text(width / 2 - cardW / 2 + 55, y - 18, reward.icon, { fontSize: '28px' }).setOrigin(0.5);
 
       // Name
-      this.add.text(120, y - 45, reward.name, {
-        fontSize: '20px', fontFamily: 'monospace', color: reward.textColor,
+      this.add.text(width / 2 - cardW / 2 + 100, y - cardH / 2 + 22, reward.name, {
+        fontSize: '19px', fontFamily: 'monospace', color: reward.textColor,
         stroke: '#000', strokeThickness: 2,
       });
 
       // Description
-      this.add.text(120, y - 10, reward.desc, {
+      this.add.text(width / 2 - cardW / 2 + 100, y - 5, reward.desc, {
         fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
-        lineSpacing: 5, wordWrap: { width: cardW - 160 },
+        lineSpacing: 5, wordWrap: { width: cardW - 140 },
       });
 
       // Effect preview
-      this.add.text(120, y + 45, reward.preview, {
+      this.add.text(width / 2 - cardW / 2 + 100, y + 40, reward.preview, {
         fontSize: '12px', fontFamily: 'monospace', color: '#2ecc71',
       });
 
+      // Interactive zone
+      const card = this.add.rectangle(width / 2, y, cardW, cardH, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+
       // Hover
       card.on('pointerover', () => {
-        card.setStrokeStyle(3, reward.borderColor);
-        card.setFillStyle(0x3d3d56, 0.95);
+        cardGfx.clear();
+        cardGfx.fillStyle(0x22224a, 0.95);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(2, reward.borderColor, 0.8);
+        cardGfx.strokeRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(reward.borderColor, 0.9);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
       card.on('pointerout', () => {
-        card.setStrokeStyle(2, reward.borderColor);
-        card.setFillStyle(0x2d3436, 0.9);
+        cardGfx.clear();
+        cardGfx.fillStyle(0x1a1a2e, 0.92);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(1.5, reward.borderColor, 0.5);
+        cardGfx.strokeRoundedRect(width / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(reward.borderColor, 0.7);
+        cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
 
       // Click to claim
@@ -79,8 +124,6 @@ export class RewardScene extends Phaser.Scene {
         if (this._chosen) return;
         this._chosen = true;
         reward.apply(this.hero, this.runState);
-        // Highlight chosen card
-        card.setStrokeStyle(3, 0xffffff);
         this.cameras.main.fadeOut(300);
         this.time.delayedCall(300, () => {
           this.runState.floor++;
@@ -94,9 +137,18 @@ export class RewardScene extends Phaser.Scene {
     });
 
     // Skip button
-    this.add.text(width / 2, height - 40, '[ SKIP ]', {
+    const skipGfx = this.add.graphics();
+    skipGfx.fillStyle(0x2d3436, 0.6);
+    skipGfx.fillRoundedRect(width / 2 - 60, height - 50, 120, 32, 6);
+    skipGfx.lineStyle(1, 0x636e72, 0.3);
+    skipGfx.strokeRoundedRect(width / 2 - 60, height - 50, 120, 32, 6);
+
+    this.add.text(width / 2, height - 34, '[ SKIP ]', {
       fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    }).setOrigin(0.5);
+
+    this.add.rectangle(width / 2, height - 34, 120, 32, 0x000000, 0)
+      .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (this._chosen) return;
         this._chosen = true;
@@ -152,7 +204,7 @@ export class RewardScene extends Phaser.Scene {
     });
 
     // Option 2: Equipment
-    const equipTier = `tier${Math.min(tierNum, 3)}`; // Max tier3 for equipment
+    const equipTier = `tier${Math.min(tierNum, 3)}`;
     const equipPool = REWARDS.equipment[equipTier];
     if (equipPool && equipPool.length > 0) {
       const equip = Phaser.Utils.Array.GetRandom(equipPool);
@@ -170,7 +222,7 @@ export class RewardScene extends Phaser.Scene {
       });
     }
 
-    // Option 3: Consumable (potion or gold)
+    // Option 3: Consumable
     if (Math.random() < 0.5) {
       rewards.push({
         name: 'Health Potion Bundle',
@@ -179,9 +231,7 @@ export class RewardScene extends Phaser.Scene {
         preview: `Potions: ${this.runState.potions} → ${this.runState.potions + 2}`,
         textColor: '#e74c3c',
         borderColor: 0xe74c3c,
-        apply: (hero, runState) => {
-          runState.potions += 2;
-        },
+        apply: (hero, runState) => { runState.potions += 2; },
       });
     } else {
       const goldAmount = Phaser.Math.Between(20 * tierNum, 40 * tierNum);
@@ -192,13 +242,10 @@ export class RewardScene extends Phaser.Scene {
         preview: `Gold: ${this.runState.gold} → ${this.runState.gold + goldAmount}`,
         textColor: '#f1c40f',
         borderColor: 0xf1c40f,
-        apply: (hero, runState) => {
-          runState.gold += goldAmount;
-        },
+        apply: (hero, runState) => { runState.gold += goldAmount; },
       });
     }
 
-    // Shuffle so options aren't always in same order
     Phaser.Utils.Array.Shuffle(rewards);
     return rewards;
   }

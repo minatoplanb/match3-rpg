@@ -1,6 +1,6 @@
 /**
  * MapScene — Floor map with 3 node choices per floor
- * Reuses dungeon crawler pattern: 3 nodes, pick one, advance.
+ * V2: Polished cards, better visual hierarchy, progress bar
  */
 import { MAP, ECONOMY, FLOOR_ENCOUNTERS, BOSSES } from '../../config/balance.js';
 import { playSwap } from '../systems/SoundManager.js';
@@ -22,25 +22,60 @@ export class MapScene extends Phaser.Scene {
 
     // Background
     const bg = this.add.graphics();
-    bg.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x0f3460, 0x0f3460, 1);
+    bg.fillGradientStyle(0x0a0a1e, 0x0a0a1e, 0x0f1a3e, 0x0f1a3e, 1);
     bg.fillRect(0, 0, width, height);
 
+    // Subtle stars
+    for (let i = 0; i < 15; i++) {
+      const star = this.add.circle(
+        Math.random() * width, Math.random() * height,
+        0.5 + Math.random(), 0xffffff, 0.15 + Math.random() * 0.2
+      );
+      this.tweens.add({
+        targets: star, alpha: 0.05,
+        duration: 1500 + Math.random() * 2000, yoyo: true, repeat: -1,
+        delay: Math.random() * 2000,
+      });
+    }
+
     // Header
-    this.add.text(width / 2, 30, `Floor ${this.floor} / 20`, {
+    this.add.text(width / 2, 25, `Floor ${this.floor} / 20`, {
       fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5);
 
+    // Progress bar
+    const progW = 300;
+    const progH = 8;
+    const progX = width / 2 - progW / 2;
+    const progY = 50;
+    const progGfx = this.add.graphics();
+    progGfx.fillStyle(0x1a1a2e, 0.8);
+    progGfx.fillRoundedRect(progX, progY, progW, progH, progH / 2);
+    progGfx.fillStyle(0xf1c40f, 0.8);
+    progGfx.fillRoundedRect(progX, progY, progW * (this.floor / 20), progH, progH / 2);
+    progGfx.lineStyle(1, 0x636e72, 0.3);
+    progGfx.strokeRoundedRect(progX, progY, progW, progH, progH / 2);
+    // Boss markers
+    [5, 10, 15, 20].forEach(bf => {
+      const bx = progX + progW * (bf / 20);
+      progGfx.fillStyle(bf <= this.floor ? 0xf1c40f : 0x636e72, 0.6);
+      progGfx.fillCircle(bx, progY + progH / 2, 4);
+    });
+
     // Hero status summary
     const h = this.hero;
-    this.add.text(width / 2, 65, `HP ${Math.round(h.currentHp)}/${h.maxHp}  💰 ${this.runState.gold}  🧪 ${this.runState.potions}`, {
+    const hpRatio = h.currentHp / h.maxHp;
+    const hpColor = hpRatio < 0.3 ? '#e74c3c' : hpRatio < 0.6 ? '#e67e22' : '#2ecc71';
+    this.add.text(width / 2, 72,
+      `HP ${Math.round(h.currentHp)}/${h.maxHp}  💰 ${this.runState.gold}  🧪 ${this.runState.potions}`, {
       fontSize: '14px', fontFamily: 'monospace', color: '#dfe6e9',
     }).setOrigin(0.5);
 
     // Chapter name
     const chapter = this.getChapterName();
     this.add.text(width / 2, 95, chapter, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#74b9ff',
+      fontSize: '15px', fontFamily: 'monospace', color: '#74b9ff',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5);
 
@@ -65,28 +100,35 @@ export class MapScene extends Phaser.Scene {
     const encounter = FLOOR_ENCOUNTERS[this.floor];
     const boss = BOSSES[encounter.boss];
 
-    const y = h / 2 - 40;
+    const y = h / 2 - 20;
 
-    // Boss card
-    const card = this.add.rectangle(w / 2, y, 400, 250, 0x2d3436, 0.95)
-      .setStrokeStyle(3, 0xff0000)
-      .setInteractive({ useHandCursor: true });
+    // Boss card — dramatic styling
+    const cardGfx = this.add.graphics();
+    // Glow behind card
+    cardGfx.fillStyle(0xff0000, 0.05);
+    cardGfx.fillRoundedRect(w / 2 - 210, y - 140, 420, 270, 16);
+    // Card body
+    cardGfx.fillStyle(0x1a0a0a, 0.95);
+    cardGfx.fillRoundedRect(w / 2 - 200, y - 130, 400, 250, 12);
+    // Animated red border
+    cardGfx.lineStyle(2, 0xff0000, 0.6);
+    cardGfx.strokeRoundedRect(w / 2 - 200, y - 130, 400, 250, 12);
 
     // Boss icon
-    this.add.text(w / 2, y - 80, '👑', { fontSize: '48px' }).setOrigin(0.5);
+    this.add.text(w / 2, y - 85, '👑', { fontSize: '40px' }).setOrigin(0.5);
 
     // Boss name
-    this.add.text(w / 2, y - 30, boss.name, {
-      fontSize: '28px', fontFamily: 'monospace', color: '#ff6b6b',
+    this.add.text(w / 2, y - 35, boss.name, {
+      fontSize: '26px', fontFamily: 'monospace', color: '#ff6b6b',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, y + 5, boss.nameZh, {
-      fontSize: '18px', fontFamily: 'monospace', color: '#dfe6e9',
+    this.add.text(w / 2, y - 5, boss.nameZh, {
+      fontSize: '16px', fontFamily: 'monospace', color: '#dfe6e9',
     }).setOrigin(0.5);
 
     // Boss stats
-    this.add.text(w / 2, y + 40, `HP ${boss.hp}  ATK ${boss.atk}  DEF ${boss.def}`, {
+    this.add.text(w / 2, y + 25, `HP ${boss.hp}  ATK ${boss.atk}  DEF ${boss.def}`, {
       fontSize: '14px', fontFamily: 'monospace', color: '#e74c3c',
     }).setOrigin(0.5);
 
@@ -97,44 +139,43 @@ export class MapScene extends Phaser.Scene {
       lifesteal: 'Steals life + poisons!',
       burn_gems: 'Burns gems on board!',
     };
-    this.add.text(w / 2, y + 70, mechanicDesc[boss.mechanic] || '', {
+    this.add.text(w / 2, y + 50, mechanicDesc[boss.mechanic] || '', {
       fontSize: '13px', fontFamily: 'monospace', color: '#ffa502',
     }).setOrigin(0.5);
 
-    // "Enter Battle" text
-    this.add.text(w / 2, y + 100, '[ TAP TO FIGHT ]', {
+    // "Enter Battle" text — pulsing
+    const enterText = this.add.text(w / 2, y + 85, '[ TAP TO FIGHT ]', {
       fontSize: '16px', fontFamily: 'monospace', color: '#f39c12',
     }).setOrigin(0.5);
+    this.tweens.add({
+      targets: enterText, alpha: 0.4,
+      duration: 800, yoyo: true, repeat: -1,
+    });
+
+    // Interactive zone
+    const card = this.add.rectangle(w / 2, y, 400, 250, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
 
     card.on('pointerdown', () => {
       if (this._nodeSelected) return;
       this._nodeSelected = true;
       playSwap();
-      this.tweens.add({
-        targets: card,
-        scaleX: 0.95, scaleY: 0.95,
-        duration: 80, yoyo: true,
-        onComplete: () => {
-          card.setStrokeStyle(4, 0xffffff);
-          this.cameras.main.fadeOut(300);
-          this.time.delayedCall(300, () => {
-            this.scene.start('Combat', {
-              ...this.runState,
-              hero: this.hero,
-              encounterType: 'boss',
-            });
-          });
-        },
+      this.cameras.main.flash(100, 255, 0, 0);
+      this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => {
+        this.scene.start('Combat', {
+          ...this.runState,
+          hero: this.hero,
+          encounterType: 'boss',
+        });
       });
     });
 
-    // Pulsing border
+    // Pulsing glow
+    const glowCircle = this.add.circle(w / 2, y, 130, 0xff0000, 0.03);
     this.tweens.add({
-      targets: card,
-      strokeAlpha: 0.3,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
+      targets: glowCircle, alpha: 0.08, scaleX: 1.1, scaleY: 1.1,
+      duration: 1200, yoyo: true, repeat: -1,
     });
   }
 
@@ -142,58 +183,83 @@ export class MapScene extends Phaser.Scene {
     const nodeCount = MAP.nodesPerFloor;
     const nodes = this.generateNodes(nodeCount);
 
-    const cardH = 200;
+    const cardH = 180;
     const cardW = w - 60;
-    const startY = 160;
-    const gap = 20;
+    const startY = 140;
+    const gap = 18;
 
-    this.add.text(w / 2, 130, 'Choose your path:', {
-      fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
+    this.add.text(w / 2, 118, 'Choose your path:', {
+      fontSize: '13px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(0.5);
 
     nodes.forEach((node, i) => {
       const y = startY + i * (cardH + gap) + cardH / 2;
 
-      const card = this.add.rectangle(w / 2, y, cardW, cardH, 0x2d3436, 0.9)
-        .setStrokeStyle(2, node.borderColor)
-        .setInteractive({ useHandCursor: true });
+      // Card background
+      const cardGfx = this.add.graphics();
+      cardGfx.fillStyle(0x1a1a2e, 0.92);
+      cardGfx.fillRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+      cardGfx.lineStyle(1.5, node.borderColor, 0.5);
+      cardGfx.strokeRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+      // Left accent
+      cardGfx.fillStyle(node.borderColor, 0.7);
+      cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+
+      // Node icon circle
+      const iconBg = this.add.graphics();
+      iconBg.fillStyle(node.borderColor, 0.15);
+      iconBg.fillCircle(w / 2 - cardW / 2 + 55, y - 10, 26);
+      iconBg.lineStyle(1.5, node.borderColor, 0.3);
+      iconBg.strokeCircle(w / 2 - cardW / 2 + 55, y - 10, 26);
 
       // Node icon
-      this.add.text(50, y - 30, node.icon, {
-        fontSize: '36px',
-      });
+      this.add.text(w / 2 - cardW / 2 + 55, y - 12, node.icon, {
+        fontSize: '28px',
+      }).setOrigin(0.5);
 
       // Node type name
-      this.add.text(110, y - 40, node.label, {
+      this.add.text(w / 2 - cardW / 2 + 100, y - 35, node.label, {
         fontSize: '20px', fontFamily: 'monospace', color: node.textColor,
         stroke: '#000', strokeThickness: 2,
       });
 
       // Description
-      this.add.text(110, y - 5, node.desc, {
+      this.add.text(w / 2 - cardW / 2 + 100, y + 0, node.desc, {
         fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
         lineSpacing: 5, wordWrap: { width: cardW - 140 },
       });
 
-      // Hover
-      card.on('pointerover', () => card.setStrokeStyle(3, node.borderColor));
-      card.on('pointerout', () => card.setStrokeStyle(2, node.borderColor));
+      // Interactive zone
+      const card = this.add.rectangle(w / 2, y, cardW, cardH, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
 
-      // Click — press-in feedback + sound, then transition
+      // Hover
+      card.on('pointerover', () => {
+        cardGfx.clear();
+        cardGfx.fillStyle(0x22224a, 0.95);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(2, node.borderColor, 0.8);
+        cardGfx.strokeRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(node.borderColor, 0.9);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+      });
+      card.on('pointerout', () => {
+        cardGfx.clear();
+        cardGfx.fillStyle(0x1a1a2e, 0.92);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.lineStyle(1.5, node.borderColor, 0.5);
+        cardGfx.strokeRoundedRect(w / 2 - cardW / 2, y - cardH / 2, cardW, cardH, 10);
+        cardGfx.fillStyle(node.borderColor, 0.7);
+        cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
+      });
+
+      // Click
       card.on('pointerdown', () => {
         if (this._nodeSelected) return;
         this._nodeSelected = true;
         playSwap();
-        this.tweens.add({
-          targets: card,
-          scaleX: 0.95, scaleY: 0.95,
-          duration: 80, yoyo: true,
-          onComplete: () => {
-            card.setStrokeStyle(3, 0xffffff);
-            this.cameras.main.fadeOut(300);
-            this.time.delayedCall(300, () => this.executeNode(node));
-          },
-        });
+        this.cameras.main.fadeOut(300);
+        this.time.delayedCall(300, () => this.executeNode(node));
       });
     });
   }
@@ -203,7 +269,6 @@ export class MapScene extends Phaser.Scene {
     const types = Object.keys(weights);
     const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
 
-    // Guarantee rest/shop before floor 5
     const needsRestOrShop = this.floor <= MAP.guaranteeRestOrShopBy
       && this.floor >= 3
       && !this.runState.hadRestOrShop;
@@ -217,7 +282,6 @@ export class MapScene extends Phaser.Scene {
       if (i === 0 && needsRestOrShop) {
         type = Math.random() < 0.5 ? 'rest' : 'shop';
       } else {
-        // Weighted random, avoid duplicates
         let attempts = 0;
         do {
           let roll = Math.random() * totalWeight;
@@ -276,44 +340,27 @@ export class MapScene extends Phaser.Scene {
   executeNode(node) {
     switch (node.type) {
       case 'combat':
-        this.scene.start('Combat', {
-          ...this.runState,
-          hero: this.hero,
-          encounterType: 'combat',
-        });
+        this.scene.start('Combat', { ...this.runState, hero: this.hero, encounterType: 'combat' });
         break;
-
       case 'elite':
-        this.scene.start('Combat', {
-          ...this.runState,
-          hero: this.hero,
-          encounterType: 'elite',
-        });
+        this.scene.start('Combat', { ...this.runState, hero: this.hero, encounterType: 'elite' });
         break;
-
       case 'shop':
         this.showShop();
         break;
-
       case 'rest':
         this.doRest();
         break;
-
       case 'mystery':
         this.doMystery();
         break;
-
       case 'treasure':
-        this.scene.start('Reward', {
-          ...this.runState,
-          hero: this.hero,
-        });
+        this.scene.start('Reward', { ...this.runState, hero: this.hero });
         break;
     }
   }
 
   showShop() {
-    // Simple shop — auto-buy best option then advance
     const h = this.hero;
     const g = this.runState.gold;
 
@@ -343,16 +390,12 @@ export class MapScene extends Phaser.Scene {
     const h = this.hero;
 
     if (roll < 0.3) {
-      // Good: free heal
       h.currentHp = Math.min(h.maxHp, h.currentHp + Math.round(h.maxHp * 0.3));
     } else if (roll < 0.5) {
-      // Good: free gold
       this.runState.gold += 30;
     } else if (roll < 0.7) {
-      // Bad: lose HP
       h.currentHp = Math.max(1, h.currentHp - Math.round(h.maxHp * 0.15));
     } else {
-      // Neutral: free potion
       this.runState.potions++;
     }
 
