@@ -78,6 +78,10 @@ export class CombatScene extends Phaser.Scene {
     this.input.on('pointerup', (pointer) => this.onPointerUp(pointer));
     this.input.on('pointermove', (pointer) => this.onPointerMove(pointer));
 
+    // Hint system
+    this.hintTimer = null;
+    this.hintOverlays = [];
+
     // Fade in, then enable input (or show tutorial first)
     this.cameras.main.fadeIn(300);
     this.time.delayedCall(400, () => {
@@ -86,7 +90,74 @@ export class CombatScene extends Phaser.Scene {
       } else {
         this.inputEnabled = true;
         this.showTurnBanner('YOUR TURN', '#2ecc71');
+        this.startHintTimer();
       }
+    });
+  }
+
+  startHintTimer() {
+    this.clearHint();
+    if (this.hintTimer) this.hintTimer.destroy();
+    this.hintTimer = this.time.delayedCall(5000, () => this.showHint());
+  }
+
+  clearHint() {
+    if (this.hintOverlays.length > 0) {
+      this.hintOverlays.forEach(o => o.destroy());
+      this.hintOverlays = [];
+    }
+  }
+
+  showHint() {
+    if (!this.inputEnabled || this.battleOver) return;
+
+    // Find a valid move
+    const { rows, cols } = BOARD;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        // Try swap right
+        if (c + 1 < cols) {
+          this.swapBoardData(r, c, r, c + 1);
+          if (this.findAllMatches().length > 0) {
+            this.swapBoardData(r, c, r, c + 1);
+            this.highlightHint(r, c, r, c + 1);
+            return;
+          }
+          this.swapBoardData(r, c, r, c + 1);
+        }
+        // Try swap down
+        if (r + 1 < rows) {
+          this.swapBoardData(r, c, r + 1, c);
+          if (this.findAllMatches().length > 0) {
+            this.swapBoardData(r, c, r + 1, c);
+            this.highlightHint(r, c, r + 1, c);
+            return;
+          }
+          this.swapBoardData(r, c, r + 1, c);
+        }
+      }
+    }
+  }
+
+  highlightHint(r1, c1, r2, c2) {
+    const pos1 = this.getGemPosition(r1, c1);
+    const pos2 = this.getGemPosition(r2, c2);
+    const size = BOARD.cellSize - 6;
+
+    [pos1, pos2].forEach(pos => {
+      const glow = this.add.graphics().setDepth(13).setAlpha(0);
+      glow.lineStyle(3, 0xf1c40f, 0.8);
+      glow.strokeRoundedRect(pos.x - size / 2, pos.y - size / 2, size, size, 6);
+      this.hintOverlays.push(glow);
+
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0, to: 0.7 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     });
   }
 
@@ -744,6 +815,10 @@ export class CombatScene extends Phaser.Scene {
 
   onGemPointerDown(sprite, pointer) {
     if (!this.inputEnabled || this.battleOver) return;
+
+    // Clear hint and reset timer on any interaction
+    this.clearHint();
+    if (this.hintTimer) this.hintTimer.destroy();
 
     // Read CURRENT position from sprite data (not closure)
     const row = sprite.getData('row');
@@ -1457,6 +1532,7 @@ export class CombatScene extends Phaser.Scene {
     this.time.delayedCall(400, () => {
       this.inputEnabled = true;
       this.showTurnBanner('YOUR TURN', '#2ecc71');
+      this.startHintTimer();
     });
   }
 
