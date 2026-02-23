@@ -49,7 +49,7 @@ export class GameOverScene extends Phaser.Scene {
     // Result title — animated entrance
     if (this.victory) {
       const title = this.add.text(width / 2, 100, 'VICTORY!', {
-        fontSize: '40px', fontFamily: 'monospace', color: '#f1c40f',
+        fontSize: '44px', fontFamily: 'monospace', color: '#f1c40f',
         stroke: '#000', strokeThickness: 6,
       }).setOrigin(0.5).setScale(0.3).setAlpha(0);
 
@@ -59,12 +59,12 @@ export class GameOverScene extends Phaser.Scene {
         duration: 500, ease: 'Back.easeOut',
       });
 
-      this.add.text(width / 2, 150, 'You conquered the dungeon!', {
-        fontSize: '15px', fontFamily: 'monospace', color: '#2ecc71',
+      this.add.text(width / 2, 155, 'You conquered the dungeon!', {
+        fontSize: '18px', fontFamily: 'monospace', color: '#2ecc71',
       }).setOrigin(0.5);
     } else {
       const title = this.add.text(width / 2, 100, 'DEFEATED', {
-        fontSize: '40px', fontFamily: 'monospace', color: '#e74c3c',
+        fontSize: '44px', fontFamily: 'monospace', color: '#e74c3c',
         stroke: '#000', strokeThickness: 6,
       }).setOrigin(0.5).setScale(0.3).setAlpha(0);
 
@@ -74,8 +74,8 @@ export class GameOverScene extends Phaser.Scene {
         duration: 500, ease: 'Back.easeOut',
       });
 
-      this.add.text(width / 2, 150, 'The dungeon claims another soul...', {
-        fontSize: '15px', fontFamily: 'monospace', color: '#b2bec3',
+      this.add.text(width / 2, 155, 'The dungeon claims another soul...', {
+        fontSize: '18px', fontFamily: 'monospace', color: '#b2bec3',
       }).setOrigin(0.5);
     }
 
@@ -88,8 +88,8 @@ export class GameOverScene extends Phaser.Scene {
     lineG.fillCircle(width / 2, 175, 3);
 
     // Stats card
-    const cardW = 450;
-    const cardH = 320;
+    const cardW = 520;
+    const cardH = 380;
     const cardY = height / 2 - 10;
 
     const cardGfx = this.add.graphics();
@@ -99,8 +99,8 @@ export class GameOverScene extends Phaser.Scene {
     cardGfx.strokeRoundedRect(width / 2 - cardW / 2, cardY - cardH / 2, cardW, cardH, 12);
 
     // Stats header
-    this.add.text(width / 2, cardY - cardH / 2 + 25, 'Run Summary', {
-      fontSize: '18px', fontFamily: 'monospace', color: this.victory ? '#f1c40f' : '#e74c3c',
+    this.add.text(width / 2, cardY - cardH / 2 + 30, 'Run Summary', {
+      fontSize: '24px', fontFamily: 'monospace', color: this.victory ? '#f1c40f' : '#e74c3c',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5);
 
@@ -117,23 +117,23 @@ export class GameOverScene extends Phaser.Scene {
     ];
 
     stats.forEach((stat, i) => {
-      const sy = cardY - cardH / 2 + 65 + i * 40;
+      const sy = cardY - cardH / 2 + 72 + i * 48;
 
       // Label
       this.add.text(width / 2 - cardW / 2 + 40, sy, stat.label, {
-        fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
+        fontSize: '18px', fontFamily: 'monospace', color: '#636e72',
       });
 
       // Value
       this.add.text(width / 2 + cardW / 2 - 40, sy, stat.value, {
-        fontSize: '14px', fontFamily: 'monospace', color: stat.color,
+        fontSize: '18px', fontFamily: 'monospace', color: stat.color,
       }).setOrigin(1, 0);
 
       // Separator line (except last)
       if (i < stats.length - 1) {
         const sepG = this.add.graphics();
         sepG.lineStyle(1, 0x636e72, 0.15);
-        sepG.lineBetween(width / 2 - cardW / 2 + 30, sy + 28, width / 2 + cardW / 2 - 30, sy + 28);
+        sepG.lineBetween(width / 2 - cardW / 2 + 30, sy + 36, width / 2 + cardW / 2 - 30, sy + 36);
       }
     });
 
@@ -153,8 +153,8 @@ export class GameOverScene extends Phaser.Scene {
       { tl: 8, tr: 8, bl: 0, br: 0 });
 
     this.add.text(width / 2, btnY, 'PLAY AGAIN', {
-      fontSize: '22px', fontFamily: 'monospace', color: '#f39c12',
-      stroke: '#000', strokeThickness: 2,
+      fontSize: '26px', fontFamily: 'monospace', color: '#f39c12',
+      stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5);
 
     const btn = this.add.rectangle(width / 2, btnY, btnW, btnH, 0x000000, 0)

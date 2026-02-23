@@ -28,11 +28,11 @@ export const GEM_COUNT = GEM_LIST.length;
 export const BOARD = {
   cols: 7,
   rows: 7,
-  cellSize: 82,        // 7 * 82 = 574px wide — bigger gems for better feel
+  cellSize: 96,        // 7 * 96 = 672px wide — mobile-friendly large gems
   reservoirRows: 7,
-  originX: 113,        // (800 - 574) / 2 = 113 → centered
-  originY: 400,        // Below hero status + gem legend strip
-  gemRadius: 34,       // Visual radius of gem circles (bigger)
+  originX: 64,         // (800 - 672) / 2 = 64 → centered
+  originY: 310,        // Compact top → more room for board
+  gemRadius: 40,       // Visual radius of gem circles
 };
 
 // ============================================================

@@ -3,10 +3,11 @@
  *
  * Layout (portrait 800x1200):
  *   [0-40]      HUD (floor, gold, potions)
- *   [40-200]    Enemy area (sprite + HP bar + name)
- *   [200-540]   Hero status + combo text + damage numbers
- *   [540-1160]  Match-3 board (7×7, ~85px cells)
- *   [1160-1200] Skill button / bottom margin
+ *   [42-170]    Enemy area (sprite + HP bar + name)
+ *   [175-290]   Hero status + armor + skill charge
+ *   [290-310]   Gem legend
+ *   [310-982]   Match-3 board (7×7, 96px cells)
+ *   [990-1200]  Skill button / bottom margin
  */
 import {
   GEM_LIST, GEM_COUNT, GEM_TYPES, BOARD, FORMULAS,
@@ -16,7 +17,7 @@ import { resolveMatches } from '../systems/MatchResolver.js';
 import {
   playGemMatch, playSwap, playInvalidSwap, playDamage, playHeal,
   playEnemyHit, playSkill, playVictory, playDefeat, playBossAppear,
-  startBGM, stopBGM, isMuted, toggleMute
+  startBGM, stopBGM, isMuted, toggleMute, haptic
 } from '../systems/SoundManager.js';
 
 export class CombatScene extends Phaser.Scene {
@@ -298,18 +299,18 @@ export class CombatScene extends Phaser.Scene {
     // Enemy name
     const nameColor = e.isBoss ? '#ff6b6b' : (e.isElite ? '#ffa502' : '#dfe6e9');
     const prefix = e.isBoss ? '👑 ' : (e.isElite ? '⚡ ' : '');
-    this.enemyNameText = this.add.text(w / 2, 50, `${prefix}${e.name}`, {
-      fontSize: e.isBoss ? '24px' : '20px',
+    this.enemyNameText = this.add.text(w / 2, 44, `${prefix}${e.name}`, {
+      fontSize: e.isBoss ? '24px' : '22px',
       fontFamily: 'monospace',
       color: nameColor,
       stroke: '#000',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(20);
 
-    // Enemy sprite — use pre-generated texture
-    const spriteSize = e.isBoss ? 120 : 80;
+    // Enemy sprite — use pre-generated texture (compact for mobile)
+    const spriteSize = e.isBoss ? 80 : 65;
     const textureKey = this.getEnemyTextureKey();
-    this.enemySprite = this.add.image(w / 2, 75 + spriteSize / 2, textureKey)
+    this.enemySprite = this.add.image(w / 2, 62 + spriteSize / 2, textureKey)
       .setDisplaySize(spriteSize, spriteSize)
       .setDepth(10);
 
@@ -327,7 +328,7 @@ export class CombatScene extends Phaser.Scene {
     // Boss pulsing glow
     if (e.isBoss) {
       const eColor = Phaser.Display.Color.HexStringToColor(e.color || '#e74c3c').color;
-      this.bossGlow = this.add.circle(w / 2, 75 + spriteSize / 2, spriteSize * 0.55, eColor, 0.15)
+      this.bossGlow = this.add.circle(w / 2, 62 + spriteSize / 2, spriteSize * 0.55, eColor, 0.15)
         .setDepth(9);
       this.tweens.add({
         targets: this.bossGlow,
@@ -342,9 +343,9 @@ export class CombatScene extends Phaser.Scene {
 
     // HP bar — improved with rounded style
     const barW = 300;
-    const barH = 22;
+    const barH = 18;
     const barX = w / 2 - barW / 2;
-    const barY = 75 + spriteSize + 12;
+    const barY = 62 + spriteSize + 8;
 
     // Bar background (rounded)
     const barBg = this.add.graphics();
@@ -363,7 +364,7 @@ export class CombatScene extends Phaser.Scene {
       .setOrigin(0, 0).setAlpha(0.15).setDepth(21);
 
     this.enemyHpText = this.add.text(w / 2, barY + barH / 2, `${e.currentHp} / ${e.maxHp}`, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#ffffff',
+      fontSize: '13px', fontFamily: 'monospace', color: '#ffffff',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(22);
 
@@ -371,9 +372,9 @@ export class CombatScene extends Phaser.Scene {
     this.enemyBarMaxW = barW - 6;
 
     // Enemy intent — shows what enemy will do next turn
-    const intentY = barY + barH + 8;
+    const intentY = barY + barH + 5;
     this.enemyIntentText = this.add.text(w / 2, intentY, '', {
-      fontSize: '12px', fontFamily: 'monospace', color: '#ff6b6b',
+      fontSize: '13px', fontFamily: 'monospace', color: '#ff6b6b',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(20);
     this.updateEnemyIntent();
@@ -431,8 +432,8 @@ export class CombatScene extends Phaser.Scene {
   showTurnBanner(text, color) {
     const w = this.scale.width;
     if (this.turnBanner) this.turnBanner.destroy();
-    this.turnBanner = this.add.text(w / 2, BOARD.originY - 38, text, {
-      fontSize: '14px', fontFamily: 'monospace', color,
+    this.turnBanner = this.add.text(w / 2, BOARD.originY - 40, text, {
+      fontSize: '16px', fontFamily: 'monospace', color,
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(50).setAlpha(0);
 
@@ -454,21 +455,21 @@ export class CombatScene extends Phaser.Scene {
   drawHUD(w) {
     // Floor indicator
     this.floorText = this.add.text(20, 12, `Floor ${this.floor}/20`, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#f1c40f',
+      fontSize: '18px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 2,
     }).setDepth(30);
 
     // Gold
     this.goldText = this.add.text(w / 2, 12, `💰 ${this.runState.gold}`, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#f1c40f',
+      fontSize: '18px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5, 0).setDepth(30);
 
     // Potion button — proper tappable area
     const potBtnX = w - 65;
     const potBtnY = 18;
-    const potBtnW = 110;
-    const potBtnH = 32;
+    const potBtnW = 120;
+    const potBtnH = 36;
     this.potionBtnBg = this.add.graphics().setDepth(29);
     this.potionBtnBg.fillStyle(0x2ecc71, 0.12);
     this.potionBtnBg.fillRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
@@ -476,7 +477,7 @@ export class CombatScene extends Phaser.Scene {
     this.potionBtnBg.strokeRoundedRect(potBtnX - potBtnW / 2, potBtnY - potBtnH / 2, potBtnW, potBtnH, 8);
 
     this.potionText = this.add.text(potBtnX, potBtnY, `🧪 ${this.runState.potions}  USE`, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#2ecc71',
+      fontSize: '16px', fontFamily: 'monospace', color: '#2ecc71',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(30);
 
@@ -516,11 +517,11 @@ export class CombatScene extends Phaser.Scene {
     const legendY = BOARD.originY - 18;
     const gems = [
       { symbol: '⚔', label: 'ATK', color: GEM_TYPES.sword.hex },
-      { symbol: '🔥', label: 'MATK', color: GEM_TYPES.fire.hex },
+      { symbol: '🔥', label: 'MAG', color: GEM_TYPES.fire.hex },
       { symbol: '🛡', label: 'DEF', color: GEM_TYPES.shield.hex },
-      { symbol: '💚', label: 'HEAL', color: GEM_TYPES.heart.hex },
+      { symbol: '💚', label: 'HP', color: GEM_TYPES.heart.hex },
       { symbol: '💰', label: 'GOLD', color: GEM_TYPES.coin.hex },
-      { symbol: '⭐', label: 'SKILL', color: GEM_TYPES.star.hex },
+      { symbol: '⭐', label: 'SKL', color: GEM_TYPES.star.hex },
     ];
 
     const totalW = BOARD.cols * BOARD.cellSize;
@@ -530,11 +531,11 @@ export class CombatScene extends Phaser.Scene {
     gems.forEach((gem, i) => {
       const x = startX + i * spacing;
       // Gem color dot
-      this.add.circle(x - 16, legendY, 5, Phaser.Display.Color.HexStringToColor(gem.color).color, 0.9)
+      this.add.circle(x - 20, legendY, 6, Phaser.Display.Color.HexStringToColor(gem.color).color, 0.9)
         .setDepth(20);
       // Label
-      this.add.text(x - 8, legendY, gem.label, {
-        fontSize: '10px', fontFamily: 'monospace', color: gem.color,
+      this.add.text(x - 11, legendY, gem.label, {
+        fontSize: '14px', fontFamily: 'monospace', color: gem.color,
         stroke: '#000', strokeThickness: 1,
       }).setOrigin(0, 0.5).setDepth(20);
     });
@@ -543,7 +544,7 @@ export class CombatScene extends Phaser.Scene {
   // ── HERO STATUS ──────────────────────────────────────────────
 
   drawHeroStatus(w) {
-    const y = 230;
+    const y = 178;
 
     // Hero name + class
     const h = this.hero;
@@ -555,9 +556,9 @@ export class CombatScene extends Phaser.Scene {
 
     // HP bar — improved rounded style
     const barW = 350;
-    const barH = 22;
+    const barH = 20;
     const barX = w / 2 - barW / 2;
-    const barY = y + 25;
+    const barY = y + 22;
 
     const heroBg = this.add.graphics();
     heroBg.fillStyle(0x1a1a2e, 0.9);
@@ -573,7 +574,7 @@ export class CombatScene extends Phaser.Scene {
       .setOrigin(0, 0).setAlpha(0.12).setDepth(21);
     this.heroHpText = this.add.text(w / 2, barY + barH / 2,
       `HP ${h.currentHp} / ${h.maxHp}`, {
-        fontSize: '12px', fontFamily: 'monospace', color: '#ffffff',
+        fontSize: '14px', fontFamily: 'monospace', color: '#ffffff',
         stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(22);
 
@@ -581,15 +582,15 @@ export class CombatScene extends Phaser.Scene {
     this.heroBarMaxW = barW - 6;
 
     // Armor display
-    this.armorText = this.add.text(w / 2, barY + barH + 8, `🛡️ Armor: ${h.armor || 0}`, {
+    this.armorText = this.add.text(w / 2, barY + barH + 5, `🛡️ Armor: ${h.armor || 0}`, {
       fontSize: '14px', fontFamily: 'monospace', color: '#74b9ff',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(20);
 
     // Skill charge bar
-    const skillY = barY + barH + 32;
+    const skillY = barY + barH + 25;
     const skillBarW = 200;
-    const skillBarH = 14;
+    const skillBarH = 12;
     const skillBarX = w / 2 - skillBarW / 2;
 
     this.add.rectangle(skillBarX + skillBarW / 2, skillY + skillBarH / 2, skillBarW, skillBarH, 0x2d3436)
@@ -597,21 +598,21 @@ export class CombatScene extends Phaser.Scene {
     this.skillBarFill = this.add.rectangle(skillBarX + 2, skillY + 2, 0, skillBarH - 4, 0x9b59b6)
       .setOrigin(0, 0).setDepth(21);
     this.skillChargeText = this.add.text(w / 2, skillY + skillBarH / 2, 'Skill: 0%', {
-      fontSize: '10px', fontFamily: 'monospace', color: '#ffffff',
+      fontSize: '11px', fontFamily: 'monospace', color: '#ffffff',
     }).setOrigin(0.5).setDepth(22);
 
     this.skillBarX = skillBarX + 2;
     this.skillBarMaxW = skillBarW - 4;
 
     // Combo text (hidden until cascade)
-    this.comboText = this.add.text(w / 2, 400, '', {
+    this.comboText = this.add.text(w / 2, BOARD.originY - 50, '', {
       fontSize: '32px', fontFamily: 'monospace', color: '#f39c12',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(30).setAlpha(0);
 
     // Stats display
-    this.statsText = this.add.text(w / 2, skillY + skillBarH + 14, '', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#b2bec3',
+    this.statsText = this.add.text(w / 2, skillY + skillBarH + 10, '', {
+      fontSize: '12px', fontFamily: 'monospace', color: '#b2bec3',
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
     this.updateStatsText();
@@ -1008,6 +1009,7 @@ export class CombatScene extends Phaser.Scene {
 
     this.comboLevel++;
     playGemMatch(this.comboLevel);
+    haptic(8 + this.comboLevel * 4);
 
     // Show combo text for cascades
     if (this.comboLevel > 1) {
@@ -1265,9 +1267,10 @@ export class CombatScene extends Phaser.Scene {
       playDamage();
     }
 
-    // Big hit screen flash
+    // Big hit screen flash + haptic
     if (totalDamage > e.maxHp * 0.15) {
       this.cameras.main.flash(100, 255, 50, 50, true);
+      haptic(25);
     }
 
     // Heal
@@ -1610,11 +1613,11 @@ export class CombatScene extends Phaser.Scene {
 
   drawSkillButton(w, h) {
     const template = HEROES[this.runState.heroKey];
-    const btnY = h - 35;
+    const btnY = h - 40;
 
     // Button background
-    const btnW = 220;
-    const btnH = 44;
+    const btnW = 280;
+    const btnH = 54;
     this.skillBtnBg = this.add.graphics();
     this.skillBtnBg.fillStyle(0x2d3436, 0.9);
     this.skillBtnBg.fillRoundedRect(w / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 10);
@@ -1630,7 +1633,7 @@ export class CombatScene extends Phaser.Scene {
     glossG.setDepth(30);
 
     this.skillBtn = this.add.text(w / 2, btnY, `⚡ ${template.skill.nameZh}`, {
-      fontSize: '18px', fontFamily: 'monospace', color: '#b2bec3',
+      fontSize: '22px', fontFamily: 'monospace', color: '#b2bec3',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(31);
 
@@ -1745,6 +1748,7 @@ export class CombatScene extends Phaser.Scene {
     this.inputEnabled = false;
     stopBGM();
     playVictory();
+    haptic(30);
     this.runState.stats.enemiesKilled = (this.runState.stats.enemiesKilled || 0) + 1;
 
     const w = this.scale.width;
@@ -1874,6 +1878,7 @@ export class CombatScene extends Phaser.Scene {
     this.inputEnabled = false;
     stopBGM();
     playDefeat();
+    haptic(40);
 
     const w = this.scale.width;
 
@@ -2008,9 +2013,12 @@ export class CombatScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
+    const els = [];
+
     // Dark overlay
     const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.75)
       .setDepth(100).setInteractive();
+    els.push(overlay);
 
     // Tutorial card
     const cardW = w - 80;
@@ -2022,12 +2030,13 @@ export class CombatScene extends Phaser.Scene {
     card.fillRoundedRect(w / 2 - cardW / 2, cardY - cardH / 2, cardW, cardH, 14);
     card.lineStyle(2, 0xf1c40f, 0.5);
     card.strokeRoundedRect(w / 2 - cardW / 2, cardY - cardH / 2, cardW, cardH, 14);
+    els.push(card);
 
     // Title
-    this.add.text(w / 2, cardY - cardH / 2 + 35, 'HOW TO PLAY', {
+    els.push(this.add.text(w / 2, cardY - cardH / 2 + 35, 'HOW TO PLAY', {
       fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(102);
+    }).setOrigin(0.5).setDepth(102));
 
     // Instructions
     const instructions = [
@@ -2044,14 +2053,14 @@ export class CombatScene extends Phaser.Scene {
 
     instructions.forEach((inst, i) => {
       const iy = cardY - cardH / 2 + 80 + i * 42;
-      this.add.text(w / 2 - cardW / 2 + 40, iy, inst.icon, {
+      els.push(this.add.text(w / 2 - cardW / 2 + 40, iy, inst.icon, {
         fontSize: '20px',
-      }).setOrigin(0, 0.5).setDepth(102);
-      this.add.text(w / 2 - cardW / 2 + 80, iy, inst.text, {
+      }).setOrigin(0, 0.5).setDepth(102));
+      els.push(this.add.text(w / 2 - cardW / 2 + 80, iy, inst.text, {
         fontSize: '13px', fontFamily: 'monospace',
         color: inst.color || '#dfe6e9',
         lineSpacing: 3,
-      }).setOrigin(0, 0.5).setDepth(102);
+      }).setOrigin(0, 0.5).setDepth(102));
     });
 
     // Dismiss button
@@ -2061,28 +2070,28 @@ export class CombatScene extends Phaser.Scene {
     btnGfx.fillRoundedRect(w / 2 - 100, btnY - 20, 200, 40, 8);
     btnGfx.lineStyle(1.5, 0xf39c12, 0.6);
     btnGfx.strokeRoundedRect(w / 2 - 100, btnY - 20, 200, 40, 8);
+    els.push(btnGfx);
 
-    this.add.text(w / 2, btnY, 'GOT IT!', {
+    els.push(this.add.text(w / 2, btnY, 'GOT IT!', {
       fontSize: '18px', fontFamily: 'monospace', color: '#f39c12',
       stroke: '#000', strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(103);
+    }).setOrigin(0.5).setDepth(103));
 
     const dismissBtn = this.add.rectangle(w / 2, btnY, 200, 40, 0x000000, 0)
       .setInteractive({ useHandCursor: true }).setDepth(104);
+    els.push(dismissBtn);
 
-    // Store all tutorial elements for cleanup
-    const tutorialElements = [overlay, card, btnGfx, dismissBtn];
+    this._tutorialElements = els;
 
     dismissBtn.on('pointerdown', () => {
       this.runState._tutorialShown = true;
-      // Fade out all tutorial elements
-      tutorialElements.forEach(el => {
+      // Destroy ALL tutorial elements (overlay, card, btnGfx, dismissBtn, and all texts)
+      this._tutorialElements.forEach(el => {
         this.tweens.add({
           targets: el, alpha: 0, duration: 200,
           onComplete: () => el.destroy(),
         });
       });
-      // Also destroy text children (they aren't in the array but will be cleaned with scene)
       this.time.delayedCall(250, () => {
         this.inputEnabled = true;
         this.showTurnBanner('YOUR TURN', '#2ecc71');

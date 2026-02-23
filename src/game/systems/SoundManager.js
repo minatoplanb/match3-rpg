@@ -32,6 +32,12 @@ function getCtx() {
   return audioCtx;
 }
 
+// ── HAPTIC FEEDBACK ───────────────────────────────────────
+
+export function haptic(ms = 10) {
+  try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* unsupported */ }
+}
+
 // ── SOUND EFFECTS ─────────────────────────────────────────
 
 export function playGemMatch(comboLevel = 1) {

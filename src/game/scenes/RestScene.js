@@ -2,7 +2,7 @@
  * RestScene — Campfire rest with heal or upgrade options
  */
 import { ECONOMY } from '../../config/balance.js';
-import { playHeal, playSwap } from '../systems/SoundManager.js';
+import { playHeal, playSwap, haptic } from '../systems/SoundManager.js';
 
 export class RestScene extends Phaser.Scene {
   constructor() {
@@ -64,34 +64,34 @@ export class RestScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 215, 'CAMPFIRE', {
-      fontSize: '28px', fontFamily: 'monospace', color: '#f39c12',
+      fontSize: '32px', fontFamily: 'monospace', color: '#f39c12',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 248, 'Take a moment to recover...', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
+    this.add.text(width / 2, 252, 'Take a moment to recover...', {
+      fontSize: '16px', fontFamily: 'monospace', color: '#b2bec3',
     }).setOrigin(0.5);
 
     // Hero status
     const h = this.hero;
     this.add.text(width / 2, 285, `HP: ${Math.round(h.currentHp)} / ${h.maxHp}`, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#2ecc71',
+      fontSize: '20px', fontFamily: 'monospace', color: '#2ecc71',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5);
 
     // Decorative line
     const lineG = this.add.graphics();
     lineG.lineStyle(1, 0xf39c12, 0.3);
-    lineG.lineBetween(width / 2 - 120, 310, width / 2 + 120, 310);
+    lineG.lineBetween(width / 2 - 150, 314, width / 2 + 150, 314);
 
     // Option cards
-    const cardW = width - 80;
-    const cardH = 160;
+    const cardW = width - 50;
+    const cardH = 200;
     const gap = 20;
 
     const options = this.getOptions();
     options.forEach((opt, i) => {
-      const y = 340 + i * (cardH + gap) + cardH / 2;
+      const y = 345 + i * (cardH + gap) + cardH / 2;
       this.drawOptionCard(opt, width, y, cardW, cardH);
     });
 
@@ -178,28 +178,28 @@ export class RestScene extends Phaser.Scene {
     // Icon circle
     const iconBg = this.add.graphics();
     iconBg.fillStyle(opt.borderColor, 0.15);
-    iconBg.fillCircle(w / 2 - cardW / 2 + 50, y - 10, 24);
+    iconBg.fillCircle(w / 2 - cardW / 2 + 58, y - 10, 32);
     iconBg.lineStyle(1.5, opt.borderColor, 0.3);
-    iconBg.strokeCircle(w / 2 - cardW / 2 + 50, y - 10, 24);
+    iconBg.strokeCircle(w / 2 - cardW / 2 + 58, y - 10, 32);
 
     // Icon
-    this.add.text(w / 2 - cardW / 2 + 50, y - 12, opt.icon, { fontSize: '26px' }).setOrigin(0.5);
+    this.add.text(w / 2 - cardW / 2 + 58, y - 12, opt.icon, { fontSize: '34px' }).setOrigin(0.5);
 
     // Name
-    this.add.text(w / 2 - cardW / 2 + 90, y - cardH / 2 + 18, opt.name, {
-      fontSize: '18px', fontFamily: 'monospace', color: opt.textColor,
-      stroke: '#000', strokeThickness: 2,
+    this.add.text(w / 2 - cardW / 2 + 105, y - cardH / 2 + 22, opt.name, {
+      fontSize: '24px', fontFamily: 'monospace', color: opt.textColor,
+      stroke: '#000', strokeThickness: 3,
     });
 
     // Description
-    this.add.text(w / 2 - cardW / 2 + 90, y + 0, opt.desc, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#b2bec3',
-      lineSpacing: 5, wordWrap: { width: cardW - 130 },
+    this.add.text(w / 2 - cardW / 2 + 105, y + 0, opt.desc, {
+      fontSize: '16px', fontFamily: 'monospace', color: '#b2bec3',
+      lineSpacing: 6, wordWrap: { width: cardW - 140 },
     });
 
     // Preview
-    this.add.text(w / 2 - cardW / 2 + 90, y + 45, opt.preview, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#2ecc71',
+    this.add.text(w / 2 - cardW / 2 + 105, y + 55, opt.preview, {
+      fontSize: '16px', fontFamily: 'monospace', color: '#2ecc71',
     });
 
     // Interactive zone
@@ -212,6 +212,7 @@ export class RestScene extends Phaser.Scene {
     card.on('pointerdown', () => {
       if (this._chosen) return;
       this._chosen = true;
+      haptic(15);
 
       opt.apply();
       drawCard(false, true);

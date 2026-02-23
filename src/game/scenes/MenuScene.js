@@ -3,7 +3,7 @@
  * V2: Polished with animated title, hero icons, background effects
  */
 import { HEROES, ECONOMY } from '../../config/balance.js';
-import { isMuted, toggleMute } from '../systems/SoundManager.js';
+import { isMuted, toggleMute, haptic } from '../systems/SoundManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -86,12 +86,12 @@ export class MenuScene extends Phaser.Scene {
     const difficulties = { warrior: 'Normal Mode', mage: 'Hard Mode', paladin: 'Tank Mode' };
     const heroIcons = { warrior: '⚔', mage: '🔮', paladin: '🛡' };
 
-    const cardH = 175;
-    const cardW = width - 60;
+    const cardH = 220;
+    const cardW = width - 50;
     const startY = 165;
 
     this.add.text(width / 2, 145, 'Choose your hero', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#636e72',
+      fontSize: '16px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(0.5);
 
     heroKeys.forEach((key, i) => {
@@ -115,44 +115,44 @@ export class MenuScene extends Phaser.Scene {
       // Hero icon circle
       const iconBg = this.add.graphics();
       iconBg.fillStyle(heroColorInt, 0.2);
-      iconBg.fillCircle(x - cardW / 2 + 55, y - 10, 28);
+      iconBg.fillCircle(x - cardW / 2 + 60, y - 10, 34);
       iconBg.lineStyle(1.5, heroColorInt, 0.4);
-      iconBg.strokeCircle(x - cardW / 2 + 55, y - 10, 28);
+      iconBg.strokeCircle(x - cardW / 2 + 60, y - 10, 34);
 
       // Hero icon (emoji)
-      this.add.text(x - cardW / 2 + 55, y - 12, heroIcons[key], {
-        fontSize: '28px',
+      this.add.text(x - cardW / 2 + 60, y - 12, heroIcons[key], {
+        fontSize: '34px',
       }).setOrigin(0.5);
 
       // Hero name
-      this.add.text(x - cardW / 2 + 100, y - cardH / 2 + 20, `${template.nameZh} ${template.name}`, {
-        fontSize: '20px', fontFamily: 'monospace', color: template.color,
+      this.add.text(x - cardW / 2 + 110, y - cardH / 2 + 22, `${template.nameZh} ${template.name}`, {
+        fontSize: '24px', fontFamily: 'monospace', color: template.color,
         stroke: '#000', strokeThickness: 3,
       });
 
       // Difficulty tag
       const diffColor = key === 'warrior' ? '#2ecc71' : key === 'mage' ? '#e74c3c' : '#3498db';
-      this.add.text(x + cardW / 2 - 20, y - cardH / 2 + 22, difficulties[key], {
-        fontSize: '11px', fontFamily: 'monospace', color: diffColor,
+      this.add.text(x + cardW / 2 - 20, y - cardH / 2 + 24, difficulties[key], {
+        fontSize: '14px', fontFamily: 'monospace', color: diffColor,
       }).setOrigin(1, 0);
 
       // Stats
       const mainStat = key === 'mage' ? `MATK ${template.matk}` : `ATK ${template.atk}`;
-      this.add.text(x - cardW / 2 + 100, y - 5,
+      this.add.text(x - cardW / 2 + 110, y - 5,
         `HP ${template.hp}  ${mainStat}  DEF ${template.def}`, {
-        fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
+        fontSize: '17px', fontFamily: 'monospace', color: '#b2bec3',
       });
 
       // Skill info
-      this.add.text(x - cardW / 2 + 100, y + 20,
+      this.add.text(x - cardW / 2 + 110, y + 22,
         `Skill: ${template.skill.nameZh} — ${template.skill.name}`, {
-        fontSize: '12px', fontFamily: 'monospace', color: '#74b9ff',
+        fontSize: '15px', fontFamily: 'monospace', color: '#74b9ff',
       });
 
       // Skill description
-      this.add.text(x - cardW / 2 + 100, y + 42, template.skill.description, {
-        fontSize: '11px', fontFamily: 'monospace', color: '#636e72',
-        wordWrap: { width: cardW - 130 },
+      this.add.text(x - cardW / 2 + 110, y + 48, template.skill.description, {
+        fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
+        wordWrap: { width: cardW - 140 },
       });
 
       // Interactive hit area
@@ -181,8 +181,9 @@ export class MenuScene extends Phaser.Scene {
           { tl: 3, bl: 3, tr: 3, br: 3 });
       });
 
-      // Click to start — press feedback
+      // Click to start — press feedback + haptic
       card.on('pointerdown', () => {
+        haptic(20);
         // Flash card bright
         cardGfx.clear();
         cardGfx.fillStyle(heroColorInt, 0.2);
@@ -226,14 +227,14 @@ export class MenuScene extends Phaser.Scene {
     // Bottom text
     const tipText = this.add.text(width / 2, height - 35,
       'Match gems to deal damage, heal, and charge skills!', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#4a4a6a',
+      fontSize: '14px', fontFamily: 'monospace', color: '#4a4a6a',
       align: 'center',
     }).setOrigin(0.5);
 
     // Sound toggle
     const soundLabel = isMuted() ? '🔇 Sound OFF' : '🔊 Sound ON';
     const soundText = this.add.text(width - 25, height - 25, soundLabel, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#636e72',
+      fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     soundText.on('pointerdown', () => {
       const muted = toggleMute();
@@ -241,7 +242,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     // Version
-    this.add.text(25, height - 15, 'v0.4.0', {
+    this.add.text(25, height - 15, 'v0.5.0', {
       fontSize: '10px', fontFamily: 'monospace', color: '#2d2d4a',
     }).setOrigin(0, 0.5);
 

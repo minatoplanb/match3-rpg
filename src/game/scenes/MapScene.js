@@ -3,7 +3,7 @@
  * V2: Polished cards, better visual hierarchy, progress bar
  */
 import { MAP, ECONOMY, ENEMIES, FLOOR_ENCOUNTERS, BOSSES } from '../../config/balance.js';
-import { playSwap } from '../systems/SoundManager.js';
+import { playSwap, haptic } from '../systems/SoundManager.js';
 
 export class MapScene extends Phaser.Scene {
   constructor() {
@@ -40,8 +40,8 @@ export class MapScene extends Phaser.Scene {
 
     // Header
     this.add.text(width / 2, 25, `Floor ${this.floor} / 20`, {
-      fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
-      stroke: '#000', strokeThickness: 3,
+      fontSize: '28px', fontFamily: 'monospace', color: '#f1c40f',
+      stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Progress bar
@@ -69,13 +69,13 @@ export class MapScene extends Phaser.Scene {
     const hpColor = hpRatio < 0.3 ? '#e74c3c' : hpRatio < 0.6 ? '#e67e22' : '#2ecc71';
     this.add.text(width / 2, 72,
       `HP ${Math.round(h.currentHp)}/${h.maxHp}  💰 ${this.runState.gold}  🧪 ${this.runState.potions}`, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#dfe6e9',
+      fontSize: '17px', fontFamily: 'monospace', color: '#dfe6e9',
     }).setOrigin(0.5);
 
     // Chapter name
     const chapter = this.getChapterName();
-    this.add.text(width / 2, 95, chapter, {
-      fontSize: '15px', fontFamily: 'monospace', color: '#74b9ff',
+    this.add.text(width / 2, 98, chapter, {
+      fontSize: '18px', fontFamily: 'monospace', color: '#74b9ff',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5);
 
@@ -119,17 +119,17 @@ export class MapScene extends Phaser.Scene {
 
     // Boss name
     this.add.text(w / 2, y - 35, boss.name, {
-      fontSize: '26px', fontFamily: 'monospace', color: '#ff6b6b',
+      fontSize: '30px', fontFamily: 'monospace', color: '#ff6b6b',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, y - 5, boss.nameZh, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#dfe6e9',
+    this.add.text(w / 2, y - 2, boss.nameZh, {
+      fontSize: '20px', fontFamily: 'monospace', color: '#dfe6e9',
     }).setOrigin(0.5);
 
     // Boss stats
-    this.add.text(w / 2, y + 25, `HP ${boss.hp}  ATK ${boss.atk}  DEF ${boss.def}`, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#e74c3c',
+    this.add.text(w / 2, y + 28, `HP ${boss.hp}  ATK ${boss.atk}  DEF ${boss.def}`, {
+      fontSize: '18px', fontFamily: 'monospace', color: '#e74c3c',
     }).setOrigin(0.5);
 
     // Mechanic hint
@@ -139,13 +139,13 @@ export class MapScene extends Phaser.Scene {
       lifesteal: 'Steals life + poisons!',
       burn_gems: 'Burns gems on board!',
     };
-    this.add.text(w / 2, y + 50, mechanicDesc[boss.mechanic] || '', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#ffa502',
+    this.add.text(w / 2, y + 55, mechanicDesc[boss.mechanic] || '', {
+      fontSize: '16px', fontFamily: 'monospace', color: '#ffa502',
     }).setOrigin(0.5);
 
     // "Enter Battle" text — pulsing
-    const enterText = this.add.text(w / 2, y + 85, '[ TAP TO FIGHT ]', {
-      fontSize: '16px', fontFamily: 'monospace', color: '#f39c12',
+    const enterText = this.add.text(w / 2, y + 90, '[ TAP TO FIGHT ]', {
+      fontSize: '20px', fontFamily: 'monospace', color: '#f39c12',
     }).setOrigin(0.5);
     this.tweens.add({
       targets: enterText, alpha: 0.4,
@@ -160,6 +160,7 @@ export class MapScene extends Phaser.Scene {
       if (this._nodeSelected) return;
       this._nodeSelected = true;
       playSwap();
+      haptic(20);
       this.cameras.main.flash(100, 255, 0, 0);
       this.cameras.main.fadeOut(300);
       this.time.delayedCall(300, () => {
@@ -183,13 +184,13 @@ export class MapScene extends Phaser.Scene {
     const nodeCount = MAP.nodesPerFloor;
     const nodes = this.generateNodes(nodeCount);
 
-    const cardH = 180;
-    const cardW = w - 60;
-    const startY = 140;
+    const cardH = 260;
+    const cardW = w - 50;
+    const startY = 148;
     const gap = 18;
 
-    this.add.text(w / 2, 118, 'Choose your path:', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#636e72',
+    this.add.text(w / 2, 128, 'Choose your path:', {
+      fontSize: '16px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(0.5);
 
     nodes.forEach((node, i) => {
@@ -208,25 +209,25 @@ export class MapScene extends Phaser.Scene {
       // Node icon circle
       const iconBg = this.add.graphics();
       iconBg.fillStyle(node.borderColor, 0.15);
-      iconBg.fillCircle(w / 2 - cardW / 2 + 55, y - 10, 26);
+      iconBg.fillCircle(w / 2 - cardW / 2 + 60, y - 10, 34);
       iconBg.lineStyle(1.5, node.borderColor, 0.3);
-      iconBg.strokeCircle(w / 2 - cardW / 2 + 55, y - 10, 26);
+      iconBg.strokeCircle(w / 2 - cardW / 2 + 60, y - 10, 34);
 
       // Node icon
-      this.add.text(w / 2 - cardW / 2 + 55, y - 12, node.icon, {
-        fontSize: '28px',
+      this.add.text(w / 2 - cardW / 2 + 60, y - 12, node.icon, {
+        fontSize: '36px',
       }).setOrigin(0.5);
 
       // Node type name
-      this.add.text(w / 2 - cardW / 2 + 100, y - 35, node.label, {
-        fontSize: '20px', fontFamily: 'monospace', color: node.textColor,
-        stroke: '#000', strokeThickness: 2,
+      this.add.text(w / 2 - cardW / 2 + 110, y - 50, node.label, {
+        fontSize: '26px', fontFamily: 'monospace', color: node.textColor,
+        stroke: '#000', strokeThickness: 3,
       });
 
       // Description
-      this.add.text(w / 2 - cardW / 2 + 100, y + 0, node.desc, {
-        fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
-        lineSpacing: 5, wordWrap: { width: cardW - 140 },
+      this.add.text(w / 2 - cardW / 2 + 110, y + 5, node.desc, {
+        fontSize: '17px', fontFamily: 'monospace', color: '#b2bec3',
+        lineSpacing: 6, wordWrap: { width: cardW - 150 },
       });
 
       // Interactive zone
@@ -253,11 +254,12 @@ export class MapScene extends Phaser.Scene {
         cardGfx.fillRoundedRect(w / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
 
-      // Click — press feedback + flash
+      // Click — press feedback + flash + haptic
       card.on('pointerdown', () => {
         if (this._nodeSelected) return;
         this._nodeSelected = true;
         playSwap();
+        haptic(15);
 
         // Flash the card bright
         cardGfx.clear();

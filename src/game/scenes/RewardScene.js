@@ -3,6 +3,7 @@
  * V2: Polished cards with rarity glow, better visual hierarchy
  */
 import { REWARDS, ECONOMY } from '../../config/balance.js';
+import { playSwap, haptic } from '../systems/SoundManager.js';
 
 export class RewardScene extends Phaser.Scene {
   constructor() {
@@ -38,21 +39,21 @@ export class RewardScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 45, 'CHOOSE A REWARD', {
-      fontSize: '24px', fontFamily: 'monospace', color: '#f1c40f',
+      fontSize: '30px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Decorative line
     const lineG = this.add.graphics();
     lineG.lineStyle(1, 0xf1c40f, 0.3);
-    lineG.lineBetween(width / 2 - 120, 65, width / 2 + 120, 65);
+    lineG.lineBetween(width / 2 - 150, 72, width / 2 + 150, 72);
 
     // Generate 3 diverse reward options
     const rewards = this.generateRewards();
 
-    const cardH = 200;
-    const cardW = width - 60;
-    const startY = 90;
+    const cardH = 260;
+    const cardW = width - 50;
+    const startY = 95;
     const gap = 18;
 
     rewards.forEach((reward, i) => {
@@ -71,28 +72,28 @@ export class RewardScene extends Phaser.Scene {
       // Icon circle
       const iconBg = this.add.graphics();
       iconBg.fillStyle(reward.borderColor, 0.15);
-      iconBg.fillCircle(width / 2 - cardW / 2 + 55, y - 15, 26);
+      iconBg.fillCircle(width / 2 - cardW / 2 + 60, y - 15, 34);
       iconBg.lineStyle(1.5, reward.borderColor, 0.3);
-      iconBg.strokeCircle(width / 2 - cardW / 2 + 55, y - 15, 26);
+      iconBg.strokeCircle(width / 2 - cardW / 2 + 60, y - 15, 34);
 
       // Icon
-      this.add.text(width / 2 - cardW / 2 + 55, y - 18, reward.icon, { fontSize: '28px' }).setOrigin(0.5);
+      this.add.text(width / 2 - cardW / 2 + 60, y - 18, reward.icon, { fontSize: '36px' }).setOrigin(0.5);
 
       // Name
-      this.add.text(width / 2 - cardW / 2 + 100, y - cardH / 2 + 22, reward.name, {
-        fontSize: '19px', fontFamily: 'monospace', color: reward.textColor,
-        stroke: '#000', strokeThickness: 2,
+      this.add.text(width / 2 - cardW / 2 + 110, y - cardH / 2 + 25, reward.name, {
+        fontSize: '24px', fontFamily: 'monospace', color: reward.textColor,
+        stroke: '#000', strokeThickness: 3,
       });
 
       // Description
-      this.add.text(width / 2 - cardW / 2 + 100, y - 5, reward.desc, {
-        fontSize: '13px', fontFamily: 'monospace', color: '#b2bec3',
-        lineSpacing: 5, wordWrap: { width: cardW - 140 },
+      this.add.text(width / 2 - cardW / 2 + 110, y - 5, reward.desc, {
+        fontSize: '17px', fontFamily: 'monospace', color: '#b2bec3',
+        lineSpacing: 6, wordWrap: { width: cardW - 150 },
       });
 
       // Effect preview
-      this.add.text(width / 2 - cardW / 2 + 100, y + 40, reward.preview, {
-        fontSize: '12px', fontFamily: 'monospace', color: '#2ecc71',
+      this.add.text(width / 2 - cardW / 2 + 110, y + 50, reward.preview, {
+        fontSize: '16px', fontFamily: 'monospace', color: '#2ecc71',
       });
 
       // Interactive zone
@@ -119,10 +120,12 @@ export class RewardScene extends Phaser.Scene {
         cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 3, y - cardH / 2 + 8, 5, cardH - 16, 3);
       });
 
-      // Click to claim — press feedback
+      // Click to claim — press feedback + haptic
       card.on('pointerdown', () => {
         if (this._chosen) return;
         this._chosen = true;
+        playSwap();
+        haptic(15);
         reward.apply(this.hero, this.runState);
 
         // Flash card bright
@@ -156,15 +159,15 @@ export class RewardScene extends Phaser.Scene {
     // Skip button
     const skipGfx = this.add.graphics();
     skipGfx.fillStyle(0x2d3436, 0.6);
-    skipGfx.fillRoundedRect(width / 2 - 60, height - 50, 120, 32, 6);
+    skipGfx.fillRoundedRect(width / 2 - 80, height - 55, 160, 40, 8);
     skipGfx.lineStyle(1, 0x636e72, 0.3);
-    skipGfx.strokeRoundedRect(width / 2 - 60, height - 50, 120, 32, 6);
+    skipGfx.strokeRoundedRect(width / 2 - 80, height - 55, 160, 40, 8);
 
-    this.add.text(width / 2, height - 34, '[ SKIP ]', {
-      fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
+    this.add.text(width / 2, height - 35, '[ SKIP ]', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(0.5);
 
-    this.add.rectangle(width / 2, height - 34, 120, 32, 0x000000, 0)
+    this.add.rectangle(width / 2, height - 35, 160, 40, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (this._chosen) return;

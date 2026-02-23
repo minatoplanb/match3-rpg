@@ -2,7 +2,7 @@
  * ShopScene — Spend gold on potions, stat boosts, and equipment
  */
 import { ECONOMY, REWARDS } from '../../config/balance.js';
-import { playSwap, playHeal } from '../systems/SoundManager.js';
+import { playSwap, playHeal, haptic } from '../systems/SoundManager.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -38,27 +38,27 @@ export class ShopScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 40, '🛒 SHOP', {
-      fontSize: '28px', fontFamily: 'monospace', color: '#f39c12',
+      fontSize: '32px', fontFamily: 'monospace', color: '#f39c12',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Gold display
-    this.goldText = this.add.text(width / 2, 75, `Gold: ${this.runState.gold}`, {
-      fontSize: '18px', fontFamily: 'monospace', color: '#f1c40f',
+    this.goldText = this.add.text(width / 2, 78, `Gold: ${this.runState.gold}`, {
+      fontSize: '22px', fontFamily: 'monospace', color: '#f1c40f',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5);
 
     // Decorative line
     const lineG = this.add.graphics();
     lineG.lineStyle(1, 0xf39c12, 0.3);
-    lineG.lineBetween(width / 2 - 120, 95, width / 2 + 120, 95);
+    lineG.lineBetween(width / 2 - 150, 100, width / 2 + 150, 100);
 
     // Generate shop items
     const items = this.generateShopItems();
 
-    const cardH = 130;
-    const cardW = width - 60;
-    const startY = 115;
+    const cardH = 165;
+    const cardW = width - 50;
+    const startY = 120;
     const gap = 12;
 
     items.forEach((item, i) => {
@@ -70,12 +70,12 @@ export class ShopScene extends Phaser.Scene {
     const leaveY = height - 55;
     const leaveGfx = this.add.graphics();
     leaveGfx.fillStyle(0x2d3436, 0.7);
-    leaveGfx.fillRoundedRect(width / 2 - 80, leaveY - 18, 160, 36, 8);
+    leaveGfx.fillRoundedRect(width / 2 - 100, leaveY - 22, 200, 44, 10);
     leaveGfx.lineStyle(1, 0x636e72, 0.4);
-    leaveGfx.strokeRoundedRect(width / 2 - 80, leaveY - 18, 160, 36, 8);
+    leaveGfx.strokeRoundedRect(width / 2 - 100, leaveY - 22, 200, 44, 10);
 
     this.add.text(width / 2, leaveY, '[ LEAVE SHOP ]', {
-      fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
+      fontSize: '18px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(0.5);
 
     this.add.rectangle(width / 2, leaveY, 160, 36, 0x000000, 0)
@@ -202,30 +202,30 @@ export class ShopScene extends Phaser.Scene {
     drawCard();
 
     // Icon
-    this.add.text(w / 2 - cardW / 2 + 45, y - 10, item.icon, { fontSize: '26px' }).setOrigin(0.5);
+    this.add.text(w / 2 - cardW / 2 + 50, y - 10, item.icon, { fontSize: '32px' }).setOrigin(0.5);
 
     // Name
-    this.add.text(w / 2 - cardW / 2 + 80, y - cardH / 2 + 16, item.name, {
-      fontSize: '17px', fontFamily: 'monospace', color: item.textColor,
+    this.add.text(w / 2 - cardW / 2 + 88, y - cardH / 2 + 20, item.name, {
+      fontSize: '21px', fontFamily: 'monospace', color: item.textColor,
       stroke: '#000', strokeThickness: 2,
     });
 
     // Description
-    this.add.text(w / 2 - cardW / 2 + 80, y + 2, item.desc, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#b2bec3',
-      wordWrap: { width: cardW - 200 },
+    this.add.text(w / 2 - cardW / 2 + 88, y + 5, item.desc, {
+      fontSize: '15px', fontFamily: 'monospace', color: '#b2bec3',
+      wordWrap: { width: cardW - 220 },
     });
 
     // Price tag
     const priceColor = canAfford ? '#f1c40f' : '#e74c3c';
     const priceText = this.add.text(w / 2 + cardW / 2 - 25, y, `${item.price}g`, {
-      fontSize: '16px', fontFamily: 'monospace', color: priceColor,
+      fontSize: '20px', fontFamily: 'monospace', color: priceColor,
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(1, 0.5);
 
     // Status text (shows SOLD after purchase)
-    const statusText = this.add.text(w / 2 + cardW / 2 - 25, y + 20, '', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#636e72',
+    const statusText = this.add.text(w / 2 + cardW / 2 - 25, y + 24, '', {
+      fontSize: '14px', fontFamily: 'monospace', color: '#636e72',
     }).setOrigin(1, 0.5);
 
     // Interactive zone
@@ -248,6 +248,7 @@ export class ShopScene extends Phaser.Scene {
       this._purchased.add(item.id);
       item.apply();
       playHeal();
+      haptic(15);
 
       // Update displays
       this.goldText.setText(`Gold: ${this.runState.gold}`);

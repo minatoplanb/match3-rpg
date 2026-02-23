@@ -1,7 +1,7 @@
 /**
  * MysteryScene — Random event encounters with risk/reward
  */
-import { playHeal, playDamage, playSwap, playVictory } from '../systems/SoundManager.js';
+import { playHeal, playDamage, playSwap, playVictory, haptic } from '../systems/SoundManager.js';
 
 export class MysteryScene extends Phaser.Scene {
   constructor() {
@@ -47,21 +47,21 @@ export class MysteryScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 45, '❓ MYSTERY EVENT', {
-      fontSize: '26px', fontFamily: 'monospace', color: '#a29bfe',
+      fontSize: '30px', fontFamily: 'monospace', color: '#a29bfe',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Decorative line
     const lineG = this.add.graphics();
     lineG.lineStyle(1, 0x6c5ce7, 0.3);
-    lineG.lineBetween(width / 2 - 120, 70, width / 2 + 120, 70);
+    lineG.lineBetween(width / 2 - 150, 72, width / 2 + 150, 72);
 
     // Generate the event
     const event = this.generateEvent();
 
     // Event card — dramatic reveal
-    const cardW = width - 80;
-    const cardH = 350;
+    const cardW = width - 50;
+    const cardH = 400;
     const cardY = height / 2 - 40;
 
     const cardGfx = this.add.graphics();
@@ -74,29 +74,29 @@ export class MysteryScene extends Phaser.Scene {
     cardGfx.fillRoundedRect(width / 2 - cardW / 2 + 4, cardY - cardH / 2 + 10, 6, cardH - 20, 4);
 
     // Event icon (large)
-    this.add.text(width / 2, cardY - 95, event.icon, {
-      fontSize: '52px',
+    this.add.text(width / 2, cardY - 110, event.icon, {
+      fontSize: '56px',
     }).setOrigin(0.5);
 
     // Event name
-    this.add.text(width / 2, cardY - 35, event.name, {
-      fontSize: '22px', fontFamily: 'monospace', color: event.textColor,
+    this.add.text(width / 2, cardY - 45, event.name, {
+      fontSize: '28px', fontFamily: 'monospace', color: event.textColor,
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5);
 
     // Event description
     this.add.text(width / 2, cardY + 15, event.desc, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#b2bec3',
-      align: 'center', lineSpacing: 6,
+      fontSize: '18px', fontFamily: 'monospace', color: '#b2bec3',
+      align: 'center', lineSpacing: 7,
       wordWrap: { width: cardW - 80 },
     }).setOrigin(0.5);
 
     // Choices
     if (event.choices && event.choices.length > 0) {
       event.choices.forEach((choice, i) => {
-        const btnY = cardY + 80 + i * 60;
-        const btnW = cardW - 100;
-        const btnH = 46;
+        const btnY = cardY + 90 + i * 70;
+        const btnW = cardW - 80;
+        const btnH = 54;
 
         const btnGfx = this.add.graphics();
         btnGfx.fillStyle(0x22224a, 0.9);
@@ -105,7 +105,7 @@ export class MysteryScene extends Phaser.Scene {
         btnGfx.strokeRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
 
         this.add.text(width / 2, btnY, choice.label, {
-          fontSize: '15px', fontFamily: 'monospace', color: choice.textColor || '#dfe6e9',
+          fontSize: '19px', fontFamily: 'monospace', color: choice.textColor || '#dfe6e9',
           stroke: '#000', strokeThickness: 2,
         }).setOrigin(0.5);
 
@@ -129,15 +129,16 @@ export class MysteryScene extends Phaser.Scene {
         btn.on('pointerdown', () => {
           if (this._chosen) return;
           this._chosen = true;
+          haptic(15);
           choice.apply();
           this.showResult(choice.result);
         });
       });
     } else {
       // Single-outcome event — just show "Continue"
-      const btnY = cardY + 100;
-      const btnW = 200;
-      const btnH = 44;
+      const btnY = cardY + 110;
+      const btnW = 240;
+      const btnH = 52;
 
       event.apply();
 
@@ -148,7 +149,7 @@ export class MysteryScene extends Phaser.Scene {
       btnGfx.strokeRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
 
       this.add.text(width / 2, btnY, '[ CONTINUE ]', {
-        fontSize: '15px', fontFamily: 'monospace', color: '#dfe6e9',
+        fontSize: '20px', fontFamily: 'monospace', color: '#dfe6e9',
       }).setOrigin(0.5);
 
       this.add.rectangle(width / 2, btnY, btnW, btnH, 0x000000, 0)
@@ -156,6 +157,7 @@ export class MysteryScene extends Phaser.Scene {
         .on('pointerdown', () => {
           if (this._chosen) return;
           this._chosen = true;
+          haptic(15);
           this.advanceFloor();
         });
     }
@@ -321,8 +323,8 @@ export class MysteryScene extends Phaser.Scene {
     else if (result.sound === 'bad') playDamage();
 
     // Result banner
-    const banner = this.add.text(width / 2, height / 2 + 180, result.text, {
-      fontSize: '22px', fontFamily: 'monospace', color: result.color,
+    const banner = this.add.text(width / 2, height / 2 + 200, result.text, {
+      fontSize: '26px', fontFamily: 'monospace', color: result.color,
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5).setAlpha(0).setScale(0.5).setDepth(50);
 
